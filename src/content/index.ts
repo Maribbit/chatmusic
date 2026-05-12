@@ -2,13 +2,13 @@
  * ChatMusic Content Script Entry Point.
  * Sets up MutationObserver to detect ABC notation blocks in AI chat apps.
  */
-import { detectAbc, scanForAbc } from "./detector";
+import { scanForAbc } from "./detector";
 import { renderAbc, hasRender } from "./renderer";
 import "./styles.css";
 
-const DEBUG = true;
+const DEBUG = false;
 function log(...args: unknown[]): void {
-  if (DEBUG) console.log("[ChatMusic]", ...args);
+  if (DEBUG) console.debug("[ChatMusic]", ...args);
 }
 
 /** Track processed elements and their last known ABC text */
@@ -18,41 +18,21 @@ const processedText = new WeakMap<Element, string>();
 let enabled = true;
 
 /**
- * Process a single <pre> element: detect ABC and render if found.
- */
-function processPreElement(pre: Element): void {
-  const result = detectAbc(pre);
-  if (!result) return;
-
-  const lastText = processedText.get(pre);
-  // Skip if already rendered with the same text
-  if (lastText === result.abcText && hasRender(pre)) return;
-
-  log("Detected ABC notation:", result.method, result.abcText.substring(0, 80) + "...");
-  renderAbc(result.element, result.abcText);
-  processedText.set(pre, result.abcText);
-  updateBadge(1);
-}
-
-/**
  * Scan a DOM node (or the whole document) for ABC notation blocks.
  */
 function fullScan(): void {
   if (!enabled) return;
 
-  const preElements = document.querySelectorAll("pre");
-  log("Full scan: found", preElements.length, "<pre> elements");
+  const results = scanForAbc(document);
+  log("Full scan: found", results.length, "ABC candidates");
 
   let detected = 0;
-  for (const pre of preElements) {
-    const result = detectAbc(pre);
-    if (result) {
-      const lastText = processedText.get(pre);
-      if (lastText !== result.abcText || !hasRender(pre)) {
-        renderAbc(result.element, result.abcText);
-        processedText.set(pre, result.abcText);
-        detected++;
-      }
+  for (const result of results) {
+    const lastText = processedText.get(result.element);
+    if (lastText !== result.abcText || !hasRender(result.element)) {
+      renderAbc(result.element, result.abcText);
+      processedText.set(result.element, result.abcText);
+      detected++;
     }
   }
 

@@ -6,9 +6,16 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "typecheck": "tsc --noEmit"
   },
-  "keywords": ["chrome-extension", "abcjs", "music-notation"],
+  "keywords": [
+    "chrome-extension",
+    "abcjs",
+    "music-notation"
+  ],
   "author": "",
   "license": "MIT",
   "dependencies": {
@@ -16,8 +23,15 @@
   },
   "devDependencies": {
     "@crxjs/vite-plugin": "^2.0.0-beta.33",
+    "@eslint/js": "^10.0.1",
     "@types/chrome": "^0.1.42",
+    "eslint": "^10.3.0",
+    "globals": "^17.6.0",
     "typescript": "^6.0.3",
+    "typescript-eslint": "^8.59.3",
     "vite": "^8.0.12"
+  },
+  "overrides": {
+    "rollup": "^2.80.0"
   }
 }
