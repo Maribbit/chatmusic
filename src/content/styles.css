@@ -1,34 +1,59 @@
-/* ChatMusic - Styles for rendered sheet music and controls */
+/* ChatMusic - styles injected inside the shadow root. */
+
+:host {
+  all: initial;
+  display: block;
+  contain: content;
+  margin: 8px 0;
+  color-scheme: light dark;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+}
+
+:host,
+:host * {
+  box-sizing: border-box;
+}
 
 .chatmusic-container {
+  all: initial;
+  box-sizing: border-box;
+  display: block;
   position: relative;
-  margin: 8px 0;
   padding: 16px;
   border: 1px solid #e0e0e0;
   border-radius: 8px;
   background: #fefefe;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  color: #222;
+  font-family: inherit;
+  line-height: 1.4;
 }
 
 .chatmusic-header {
   display: flex;
   align-items: center;
   margin-bottom: 12px;
+  font-family: inherit;
 }
 
 .chatmusic-label {
+  display: inline-block;
   font-size: 12px;
   color: #888;
   user-select: none;
   font-weight: 500;
+  line-height: 1.2;
 }
 
 .chatmusic-score {
   width: 100%;
   overflow-x: auto;
+  background: #fff;
+  color: #111;
+  border-radius: 4px;
 }
 
 .chatmusic-score svg {
+  display: block;
   max-width: 100%;
   height: auto;
 }
@@ -37,12 +62,22 @@
   margin-top: 12px;
   padding-top: 12px;
   border-top: 1px solid #eee;
+  color: inherit;
+  font-family: inherit;
+}
+
+.chatmusic-audio button,
+.chatmusic-audio input,
+.chatmusic-audio select {
+  font: inherit;
 }
 
 .chatmusic-no-audio {
+  display: block;
   font-size: 12px;
   color: #999;
   margin: 0;
+  line-height: 1.4;
 }
 
 /* Dark mode support */

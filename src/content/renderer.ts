@@ -3,23 +3,40 @@
  * Creates sheet music SVG and playback controls below detected code blocks.
  */
 import abcjs from "abcjs";
-import "abcjs/abcjs-audio.css";
+import abcjsAudioStyles from "abcjs/abcjs-audio.css?inline";
+import chatmusicStyles from "./styles.css?inline";
 
 export interface RenderInstance {
   container: HTMLElement;
+  scoreElement: HTMLElement;
+  audioElement: HTMLElement;
   preElement: Element;
   abcText: string;
   visualObj: abcjs.TuneObject[] | null;
   synthControl: abcjs.SynthObjectController | null;
 }
 
+interface RenderElements {
+  container: HTMLElement;
+  scoreElement: HTMLElement;
+  audioElement: HTMLElement;
+}
+
 const instances = new Map<Element, RenderInstance>();
+const shadowStyles = `${chatmusicStyles}\n${abcjsAudioStyles}`;
 
 /**
  * Create the ChatMusic container with score area and audio area.
  * Uses abcjs SynthController's built-in UI for playback (has progress, warp, etc.)
  */
-function createContainer(preElement: Element): HTMLElement {
+function createContainer(preElement: Element): RenderElements {
+  const host = document.createElement("div");
+  host.className = "chatmusic-host";
+
+  const shadowRoot = host.attachShadow({ mode: "open" });
+  const style = document.createElement("style");
+  style.textContent = shadowStyles;
+
   const container = document.createElement("div");
   container.className = "chatmusic-container";
 
@@ -31,10 +48,16 @@ function createContainer(preElement: Element): HTMLElement {
     <div class="chatmusic-audio"></div>
   `;
 
-  // Insert after the <pre> element
-  preElement.parentNode?.insertBefore(container, preElement.nextSibling);
+  shadowRoot.append(style, container);
 
-  return container;
+  // Insert after the <pre> element
+  preElement.parentNode?.insertBefore(host, preElement.nextSibling);
+
+  return {
+    container: host,
+    scoreElement: container.querySelector(".chatmusic-score") as HTMLElement,
+    audioElement: container.querySelector(".chatmusic-audio") as HTMLElement,
+  };
 }
 
 /**
@@ -44,7 +67,7 @@ function createContainer(preElement: Element): HTMLElement {
 async function initSynth(instance: RenderInstance): Promise<void> {
   if (!instance.visualObj || instance.visualObj.length === 0) return;
 
-  const audioEl = instance.container.querySelector(".chatmusic-audio") as HTMLElement;
+  const audioEl = instance.audioElement;
 
   if (!abcjs.synth.supportsAudio()) {
     audioEl.innerHTML = '<p class="chatmusic-no-audio">Audio playback not supported in this browser.</p>';
@@ -80,17 +103,18 @@ export function renderAbc(preElement: Element, abcText: string): RenderInstance 
     return updateRender(existing, abcText);
   }
 
-  const container = createContainer(preElement);
-  const scoreEl = container.querySelector(".chatmusic-score") as HTMLElement;
+  const elements = createContainer(preElement);
 
   // Render sheet music SVG
-  const visualObj = abcjs.renderAbc(scoreEl, abcText, {
+  const visualObj = abcjs.renderAbc(elements.scoreElement, abcText, {
     responsive: "resize",
     add_classes: true,
   });
 
   const instance: RenderInstance = {
-    container,
+    container: elements.container,
+    scoreElement: elements.scoreElement,
+    audioElement: elements.audioElement,
     preElement,
     abcText,
     visualObj,
@@ -109,10 +133,8 @@ export function renderAbc(preElement: Element, abcText: string): RenderInstance 
  * Update an existing render with new ABC text.
  */
 function updateRender(instance: RenderInstance, abcText: string): RenderInstance {
-  const scoreEl = instance.container.querySelector(".chatmusic-score") as HTMLElement;
-
   // Re-render SVG
-  const visualObj = abcjs.renderAbc(scoreEl, abcText, {
+  const visualObj = abcjs.renderAbc(instance.scoreElement, abcText, {
     responsive: "resize",
     add_classes: true,
   });

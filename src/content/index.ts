@@ -4,7 +4,6 @@
  */
 import { scanForAbc } from "./detector";
 import { renderAbc, hasRender } from "./renderer";
-import "./styles.css";
 
 const DEBUG = false;
 function log(...args: unknown[]): void {
