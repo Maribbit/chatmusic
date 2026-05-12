@@ -7,11 +7,13 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
+    "audit": "npm audit --audit-level=high",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "check": "npm run audit && npm run lint && npm run typecheck && npm run test && npm run build"
   },
   "keywords": [
     "chrome-extension",
