@@ -9,7 +9,9 @@
     "preview": "vite preview",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest"
   },
   "keywords": [
     "chrome-extension",
@@ -27,9 +29,11 @@
     "@types/chrome": "^0.1.42",
     "eslint": "^10.3.0",
     "globals": "^17.6.0",
+    "jsdom": "^29.1.1",
     "typescript": "^6.0.3",
     "typescript-eslint": "^8.59.3",
-    "vite": "^8.0.12"
+    "vite": "^8.0.12",
+    "vitest": "^4.1.6"
   },
   "overrides": {
     "rollup": "^2.80.0"
