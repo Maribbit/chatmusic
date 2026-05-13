@@ -3,7 +3,13 @@
  * Sets up MutationObserver to detect ABC notation blocks in AI chat apps.
  */
 import { scanForAbc } from "./detector";
-import { renderAbc, hasRender } from "./renderer";
+import { renderAbc, hasRender, updateRenderThemes } from "./renderer";
+import {
+  DEFAULT_THEME_MODE,
+  THEME_MODE_STORAGE_KEY,
+  normalizeThemeMode,
+  type ThemeMode,
+} from "../shared/settings";
 
 const DEBUG = false;
 function log(...args: unknown[]): void {
@@ -15,6 +21,12 @@ const processedText = new WeakMap<Element, string>();
 
 /** Extension enabled state */
 let enabled = true;
+
+/** Rendered score theme preference */
+let themeMode: ThemeMode = DEFAULT_THEME_MODE;
+
+let domObserverStarted = false;
+let themeObserverStarted = false;
 
 /**
  * Scan a DOM node (or the whole document) for ABC notation blocks.
@@ -29,7 +41,7 @@ function fullScan(): void {
   for (const result of results) {
     const lastText = processedText.get(result.element);
     if (lastText !== result.abcText || !hasRender(result.element)) {
-      renderAbc(result.element, result.abcText);
+      renderAbc(result.element, result.abcText, themeMode);
       processedText.set(result.element, result.abcText);
       detected++;
     }
@@ -76,10 +88,17 @@ const scheduleScan = debounce(() => {
   fullScan();
 }, 300);
 
+const scheduleThemeSync = debounce(() => {
+  if (!enabled || themeMode !== "auto") return;
+  updateRenderThemes(themeMode);
+}, 100);
+
 /**
  * Set up the MutationObserver on document.body.
  */
 function setupObserver(): void {
+  if (domObserverStarted) return;
+
   const observer = new MutationObserver(() => {
     scheduleScan();
   });
@@ -90,7 +109,36 @@ function setupObserver(): void {
     characterData: true,
   });
 
+  domObserverStarted = true;
   log("MutationObserver attached to document.body");
+}
+
+function setupThemeObserver(): void {
+  if (themeObserverStarted) return;
+
+  const observer = new MutationObserver(() => {
+    scheduleThemeSync();
+  });
+  const options: MutationObserverInit = {
+    attributes: true,
+    attributeFilter: [
+      "class",
+      "style",
+      "data-theme",
+      "data-color-mode",
+      "data-bs-theme",
+    ],
+  };
+
+  observer.observe(document.documentElement, options);
+  if (document.body) observer.observe(document.body, options);
+
+  window
+    .matchMedia?.("(prefers-color-scheme: dark)")
+    .addEventListener("change", scheduleThemeSync);
+
+  themeObserverStarted = true;
+  log("Theme observer attached");
 }
 
 /**
@@ -101,8 +149,15 @@ function setupMessageListener(): void {
     if (message.type === "SET_ENABLED") {
       enabled = message.enabled;
       if (enabled) {
+        setupObserver();
+        setupThemeObserver();
         fullScan();
       }
+    }
+
+    if (message.type === "SET_THEME_MODE") {
+      themeMode = normalizeThemeMode(message.themeMode);
+      updateRenderThemes(themeMode);
     }
   });
 }
@@ -112,10 +167,15 @@ function setupMessageListener(): void {
  */
 async function loadState(): Promise<void> {
   try {
-    const result = await chrome.storage.sync.get("enabled");
+    const result = await chrome.storage.sync.get([
+      "enabled",
+      THEME_MODE_STORAGE_KEY,
+    ]);
     enabled = result.enabled !== false; // Default to enabled
+    themeMode = normalizeThemeMode(result[THEME_MODE_STORAGE_KEY]);
   } catch {
     enabled = true;
+    themeMode = DEFAULT_THEME_MODE;
   }
 }
 
@@ -125,13 +185,13 @@ async function loadState(): Promise<void> {
 async function init(): Promise<void> {
   await loadState();
 
+  // Listen for messages even when detection starts disabled.
+  setupMessageListener();
+
   if (!enabled) {
     log("Extension disabled, skipping init");
     return;
   }
-
-  // Listen for messages (always, even before scan)
-  setupMessageListener();
 
   // Initial scan of existing DOM
   log("Initial scan...");
@@ -139,6 +199,7 @@ async function init(): Promise<void> {
 
   // Set up observer for future changes
   setupObserver();
+  setupThemeObserver();
 
   log("Content script initialized on", window.location.href);
 }

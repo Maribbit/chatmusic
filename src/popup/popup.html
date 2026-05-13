@@ -61,6 +61,25 @@
     .toggle input:checked + .slider:before {
       transform: translateX(20px);
     }
+    .setting-row {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      padding: 8px 0;
+    }
+    .setting-row label {
+      color: #444;
+      font-size: 13px;
+    }
+    .setting-row select {
+      width: 100%;
+      font: inherit;
+      padding: 6px 8px;
+      border: 1px solid #d0d0d0;
+      border-radius: 6px;
+      background: #fff;
+      color: #222;
+    }
     .status {
       margin-top: 12px;
       padding: 8px;
@@ -83,6 +102,15 @@
       <input type="checkbox" id="enableToggle" checked>
       <span class="slider"></span>
     </label>
+  </div>
+
+  <div class="setting-row">
+    <label for="themeModeSelect">Theme</label>
+    <select id="themeModeSelect">
+      <option value="auto">Auto</option>
+      <option value="light">Light</option>
+      <option value="dark">Dark</option>
+    </select>
   </div>
 
   <div class="status" id="status">

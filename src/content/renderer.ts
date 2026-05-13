@@ -5,6 +5,8 @@
 import abcjs from "abcjs";
 import abcjsAudioStyles from "abcjs/abcjs-audio.css?inline";
 import chatmusicStyles from "./styles.css?inline";
+import { DEFAULT_THEME_MODE, type ThemeMode } from "../shared/settings";
+import { resolveTheme } from "./theme";
 
 export interface RenderInstance {
   container: HTMLElement;
@@ -12,6 +14,7 @@ export interface RenderInstance {
   audioElement: HTMLElement;
   preElement: Element;
   abcText: string;
+  themeMode: ThemeMode;
   visualObj: abcjs.TuneObject[] | null;
   synthControl: abcjs.SynthObjectController | null;
 }
@@ -29,9 +32,13 @@ const shadowStyles = `${chatmusicStyles}\n${abcjsAudioStyles}`;
  * Create the ChatMusic container with score area and audio area.
  * Uses abcjs SynthController's built-in UI for playback (has progress, warp, etc.)
  */
-function createContainer(preElement: Element): RenderElements {
+function createContainer(
+  preElement: Element,
+  themeMode: ThemeMode
+): RenderElements {
   const host = document.createElement("div");
   host.className = "chatmusic-host";
+  applyHostTheme(host, preElement, themeMode);
 
   const shadowRoot = host.attachShadow({ mode: "open" });
   const style = document.createElement("style");
@@ -58,6 +65,18 @@ function createContainer(preElement: Element): RenderElements {
     scoreElement: container.querySelector(".chatmusic-score") as HTMLElement,
     audioElement: container.querySelector(".chatmusic-audio") as HTMLElement,
   };
+}
+
+function applyHostTheme(
+  host: HTMLElement,
+  preElement: Element,
+  themeMode: ThemeMode
+): void {
+  const resolvedTheme = resolveTheme(preElement, themeMode);
+
+  host.dataset.chatmusicTheme = resolvedTheme;
+  host.dataset.chatmusicThemeMode = themeMode;
+  host.style.colorScheme = resolvedTheme;
 }
 
 /**
@@ -95,15 +114,20 @@ async function initSynth(instance: RenderInstance): Promise<void> {
  * Render ABC notation for a given <pre> element.
  * Creates the container, renders SVG, and sets up playback.
  */
-export function renderAbc(preElement: Element, abcText: string): RenderInstance {
+export function renderAbc(
+  preElement: Element,
+  abcText: string,
+  themeMode: ThemeMode = DEFAULT_THEME_MODE
+): RenderInstance {
   // If already rendered, update instead of creating new
   const existing = instances.get(preElement);
   if (existing) {
+    applyTheme(existing, themeMode);
     if (existing.abcText === abcText) return existing;
-    return updateRender(existing, abcText);
+    return updateRender(existing, abcText, themeMode);
   }
 
-  const elements = createContainer(preElement);
+  const elements = createContainer(preElement, themeMode);
 
   // Render sheet music SVG
   const visualObj = abcjs.renderAbc(elements.scoreElement, abcText, {
@@ -117,6 +141,7 @@ export function renderAbc(preElement: Element, abcText: string): RenderInstance 
     audioElement: elements.audioElement,
     preElement,
     abcText,
+    themeMode,
     visualObj,
     synthControl: null,
   };
@@ -132,7 +157,13 @@ export function renderAbc(preElement: Element, abcText: string): RenderInstance 
 /**
  * Update an existing render with new ABC text.
  */
-function updateRender(instance: RenderInstance, abcText: string): RenderInstance {
+function updateRender(
+  instance: RenderInstance,
+  abcText: string,
+  themeMode: ThemeMode
+): RenderInstance {
+  applyTheme(instance, themeMode);
+
   // Re-render SVG
   const visualObj = abcjs.renderAbc(instance.scoreElement, abcText, {
     responsive: "resize",
@@ -150,6 +181,17 @@ function updateRender(instance: RenderInstance, abcText: string): RenderInstance
   initSynth(instance);
 
   return instance;
+}
+
+function applyTheme(instance: RenderInstance, themeMode: ThemeMode): void {
+  instance.themeMode = themeMode;
+  applyHostTheme(instance.container, instance.preElement, themeMode);
+}
+
+export function updateRenderThemes(themeMode: ThemeMode): void {
+  for (const instance of instances.values()) {
+    applyTheme(instance, themeMode);
+  }
 }
 
 /**
