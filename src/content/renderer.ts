@@ -26,7 +26,7 @@ interface RenderElements {
 }
 
 const instances = new Map<Element, RenderInstance>();
-const shadowStyles = `${chatmusicStyles}\n${abcjsAudioStyles}`;
+const shadowStyles = `${abcjsAudioStyles}\n${chatmusicStyles}`;
 
 /**
  * Create the ChatMusic container with score area and audio area.
