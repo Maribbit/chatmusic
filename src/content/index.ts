@@ -8,15 +8,20 @@ import {
   hasRender,
   updateRenderThemes,
   updateCodeBlockVisibility,
+  updateKeyboardVisibility,
 } from "./renderer";
 import {
   CODE_BLOCK_VISIBILITY_STORAGE_KEY,
   DEFAULT_CODE_BLOCK_VISIBILITY,
+  DEFAULT_KEYBOARD_VISIBILITY,
   DEFAULT_THEME_MODE,
+  KEYBOARD_VISIBILITY_STORAGE_KEY,
   THEME_MODE_STORAGE_KEY,
   normalizeCodeBlockVisibility,
+  normalizeKeyboardVisibility,
   normalizeThemeMode,
   type CodeBlockVisibility,
+  type KeyboardVisibility,
   type ThemeMode,
 } from "../shared/settings";
 
@@ -36,6 +41,9 @@ let themeMode: ThemeMode = DEFAULT_THEME_MODE;
 
 /** Source code visibility preference */
 let codeBlockVisibility: CodeBlockVisibility = DEFAULT_CODE_BLOCK_VISIBILITY;
+
+/** Piano keyboard visibility preference */
+let keyboardVisibility: KeyboardVisibility = DEFAULT_KEYBOARD_VISIBILITY;
 
 let domObserverStarted = false;
 let themeObserverStarted = false;
@@ -57,7 +65,8 @@ function fullScan(): void {
         result.element,
         result.abcText,
         themeMode,
-        codeBlockVisibility
+        codeBlockVisibility,
+        keyboardVisibility
       );
       processedText.set(result.element, result.abcText);
       detected++;
@@ -183,6 +192,13 @@ function setupMessageListener(): void {
       );
       updateCodeBlockVisibility(codeBlockVisibility);
     }
+
+    if (message.type === "SET_KEYBOARD_VISIBILITY") {
+      keyboardVisibility = normalizeKeyboardVisibility(
+        message.keyboardVisibility
+      );
+      updateKeyboardVisibility(keyboardVisibility);
+    }
   });
 }
 
@@ -195,16 +211,21 @@ async function loadState(): Promise<void> {
       "enabled",
       THEME_MODE_STORAGE_KEY,
       CODE_BLOCK_VISIBILITY_STORAGE_KEY,
+      KEYBOARD_VISIBILITY_STORAGE_KEY,
     ]);
     enabled = result.enabled !== false; // Default to enabled
     themeMode = normalizeThemeMode(result[THEME_MODE_STORAGE_KEY]);
     codeBlockVisibility = normalizeCodeBlockVisibility(
       result[CODE_BLOCK_VISIBILITY_STORAGE_KEY]
     );
+    keyboardVisibility = normalizeKeyboardVisibility(
+      result[KEYBOARD_VISIBILITY_STORAGE_KEY]
+    );
   } catch {
     enabled = true;
     themeMode = DEFAULT_THEME_MODE;
     codeBlockVisibility = DEFAULT_CODE_BLOCK_VISIBILITY;
+    keyboardVisibility = DEFAULT_KEYBOARD_VISIBILITY;
   }
 }
 

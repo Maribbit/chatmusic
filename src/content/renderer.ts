@@ -7,8 +7,10 @@ import abcjsAudioStyles from "abcjs/abcjs-audio.css?inline";
 import chatmusicStyles from "./styles.css?inline";
 import {
   DEFAULT_CODE_BLOCK_VISIBILITY,
+  DEFAULT_KEYBOARD_VISIBILITY,
   DEFAULT_THEME_MODE,
   type CodeBlockVisibility,
+  type KeyboardVisibility,
   type ThemeMode,
 } from "../shared/settings";
 import { resolveTheme } from "./theme";
@@ -16,6 +18,8 @@ import { resolveTheme } from "./theme";
 export interface RenderInstance {
   container: HTMLElement;
   scoreElement: HTMLElement;
+  keyboardElement: HTMLElement;
+  keyboardToggleButton: HTMLButtonElement;
   audioElement: HTMLElement;
   tempoMenuElement: HTMLElement;
   tempoInputElement: HTMLInputElement;
@@ -27,7 +31,11 @@ export interface RenderInstance {
   themeMode: ThemeMode;
   visualObj: abcjs.TuneObject[] | null;
   synthControl: abcjs.SynthObjectController | null;
+  isKeyboardVisible: boolean;
+  keyboardFocusStartPitch: number;
+  keyboardFocusEndPitch: number;
   activePlaybackElements: Element[];
+  activeKeyboardKeys: HTMLElement[];
   cleanup: () => void;
 }
 
@@ -40,10 +48,15 @@ interface TimingEvent {
   type?: string;
   milliseconds: number;
   elements?: unknown[];
+  midiPitches?: MidiPitch[];
   startChar?: number | null;
   endChar?: number | null;
   startCharArray?: Array<number | null>;
   endCharArray?: Array<number | null>;
+}
+
+interface MidiPitch {
+  pitch?: number;
 }
 
 type TimedTuneObject = Omit<abcjs.TuneObject, "setTiming"> & {
@@ -61,6 +74,8 @@ interface SeekableSynthControl extends abcjs.SynthObjectController {
 interface RenderElements {
   container: HTMLElement;
   scoreElement: HTMLElement;
+  keyboardElement: HTMLElement;
+  keyboardToggleButton: HTMLButtonElement;
   audioElement: HTMLElement;
   tempoMenuElement: HTMLElement;
   tempoInputElement: HTMLInputElement;
@@ -70,6 +85,12 @@ interface RenderElements {
 
 const instances = new Map<Element, RenderInstance>();
 const shadowStyles = `${abcjsAudioStyles}\n${chatmusicStyles}`;
+const FULL_KEYBOARD_START_PITCH = 21;
+const FULL_KEYBOARD_END_PITCH = 108;
+const MIDDLE_C_PITCH = 60;
+const WHITE_KEY_COUNT = 52;
+const MIN_WHITE_KEY_WIDTH = 20;
+const KEYBOARD_HORIZONTAL_PADDING = 16;
 
 /**
  * Create the ChatMusic container with score area and audio area.
@@ -104,10 +125,20 @@ function createContainer(
           </div>
         </details>
         <button class="chatmusic-fullscreen-button" type="button" title="Enter fullscreen" aria-label="Enter fullscreen" aria-pressed="false">⛶</button>
+        <button class="chatmusic-keyboard-toggle-button" type="button" title="Hide keyboard" aria-label="Hide keyboard" aria-pressed="true">
+          <span class="chatmusic-keyboard-icon" aria-hidden="true">
+            <span class="chatmusic-keyboard-icon-white"></span>
+            <span class="chatmusic-keyboard-icon-white"></span>
+            <span class="chatmusic-keyboard-icon-white"></span>
+            <span class="chatmusic-keyboard-icon-black"></span>
+            <span class="chatmusic-keyboard-icon-black"></span>
+          </span>
+        </button>
         <button class="chatmusic-code-toggle-button" type="button" title="Hide source code" aria-label="Hide source code" aria-pressed="true">&lt;/&gt;</button>
       </div>
     </div>
     <div class="chatmusic-score"></div>
+    <div class="chatmusic-keyboard"></div>
     <div class="chatmusic-audio"></div>
   `;
 
@@ -124,6 +155,12 @@ function createContainer(
   return {
     container: host,
     scoreElement: container.querySelector(".chatmusic-score") as HTMLElement,
+    keyboardElement: container.querySelector(
+      ".chatmusic-keyboard"
+    ) as HTMLElement,
+    keyboardToggleButton: container.querySelector(
+      ".chatmusic-keyboard-toggle-button"
+    ) as HTMLButtonElement,
     audioElement: container.querySelector(".chatmusic-audio") as HTMLElement,
     tempoMenuElement: container.querySelector(
       ".chatmusic-tempo-menu"
@@ -226,6 +263,7 @@ async function initSynth(instance: RenderInstance): Promise<void> {
 
 function createCursorControl(instance: RenderInstance): object {
   return {
+    onReady: () => setupKeyboard(instance),
     onStart: () => clearPlaybackHighlight(instance),
     onEvent: (event: TimingEvent) => highlightTimingEvent(instance, event),
     onFinished: () => clearPlaybackHighlight(instance),
@@ -244,13 +282,171 @@ function highlightTimingEvent(
   }
 
   instance.activePlaybackElements = elements;
+  highlightKeyboardPitches(instance, event.midiPitches ?? []);
 }
 
 function clearPlaybackHighlight(instance: RenderInstance): void {
   for (const element of instance.activePlaybackElements) {
     element.classList.remove("chatmusic-note-playing");
   }
+  for (const key of instance.activeKeyboardKeys) {
+    key.classList.remove("chatmusic-key-active");
+  }
   instance.activePlaybackElements = [];
+  instance.activeKeyboardKeys = [];
+}
+
+function setupKeyboard(instance: RenderInstance): void {
+  const pitches = getTuneMidiPitches(instance);
+  const tunePitches = new Set(pitches);
+  instance.keyboardElement.replaceChildren();
+  instance.activeKeyboardKeys = [];
+  instance.keyboardFocusStartPitch = pitches[0] ?? MIDDLE_C_PITCH;
+  instance.keyboardFocusEndPitch = pitches[pitches.length - 1] ?? MIDDLE_C_PITCH;
+
+  // Keep the piano geography stable; tune pitches only affect markers and scroll.
+  for (
+    let pitch = FULL_KEYBOARD_START_PITCH;
+    pitch <= FULL_KEYBOARD_END_PITCH;
+    pitch++
+  ) {
+    const key = document.createElement("div");
+    const isBlack = isBlackPianoKey(pitch);
+
+    key.className = `chatmusic-piano-key ${
+      isBlack ? "chatmusic-piano-key-black" : "chatmusic-piano-key-white"
+    }`;
+    if (tunePitches.has(pitch)) key.classList.add("chatmusic-key-in-tune");
+    if (pitch === MIDDLE_C_PITCH) {
+      key.classList.add("chatmusic-key-middle-c");
+    }
+    key.dataset.pitch = String(pitch);
+    key.dataset.note = getMidiNoteName(pitch);
+    key.title = getMidiNoteName(pitch);
+    instance.keyboardElement.append(key);
+  }
+
+  syncKeyboardKeySize(instance);
+  setKeyboardVisible(instance, instance.isKeyboardVisible);
+}
+
+function setKeyboardVisible(
+  instance: RenderInstance,
+  isKeyboardVisible: boolean
+): void {
+  instance.isKeyboardVisible = isKeyboardVisible;
+  instance.keyboardElement.hidden = !isKeyboardVisible;
+  updateKeyboardToggleButton(instance);
+  if (isKeyboardVisible) {
+    syncKeyboardKeySize(instance);
+    scrollKeyboardToFocusRange(instance);
+  }
+}
+
+function syncKeyboardKeySize(instance: RenderInstance): void {
+  const availableWidth = Math.max(
+    0,
+    instance.keyboardElement.clientWidth - KEYBOARD_HORIZONTAL_PADDING
+  );
+  const whiteKeyWidth = Math.max(
+    MIN_WHITE_KEY_WIDTH,
+    availableWidth / WHITE_KEY_COUNT
+  );
+  const blackKeyWidth = whiteKeyWidth * 0.6;
+
+  instance.keyboardElement.style.setProperty(
+    "--chatmusic-white-key-width",
+    `${whiteKeyWidth}px`
+  );
+  instance.keyboardElement.style.setProperty(
+    "--chatmusic-black-key-width",
+    `${blackKeyWidth}px`
+  );
+  instance.keyboardElement.style.setProperty(
+    "--chatmusic-black-key-offset",
+    `${-blackKeyWidth / 2}px`
+  );
+}
+
+function updateKeyboardToggleButton(instance: RenderInstance): void {
+  const label = instance.isKeyboardVisible ? "Hide keyboard" : "Show keyboard";
+
+  instance.keyboardToggleButton.title = label;
+  instance.keyboardToggleButton.setAttribute("aria-label", label);
+  instance.keyboardToggleButton.setAttribute(
+    "aria-pressed",
+    String(instance.isKeyboardVisible)
+  );
+}
+
+function scrollKeyboardToFocusRange(instance: RenderInstance): void {
+  const startKey = instance.keyboardElement.querySelector(
+    `[data-pitch="${instance.keyboardFocusStartPitch}"]`
+  );
+  const endKey = instance.keyboardElement.querySelector(
+    `[data-pitch="${instance.keyboardFocusEndPitch}"]`
+  );
+  if (!(startKey instanceof HTMLElement) || !(endKey instanceof HTMLElement)) {
+    return;
+  }
+
+  requestAnimationFrame(() => {
+    if (instance.keyboardElement.hidden) return;
+
+    const start = startKey.offsetLeft;
+    const end = endKey.offsetLeft + endKey.offsetWidth;
+    const center = (start + end) / 2;
+    const scrollLeft = Math.max(
+      0,
+      center - instance.keyboardElement.clientWidth / 2
+    );
+
+    instance.keyboardElement.scrollTo({ left: scrollLeft });
+  });
+}
+
+function highlightKeyboardPitches(
+  instance: RenderInstance,
+  midiPitches: MidiPitch[]
+): void {
+  const activeKeys: HTMLElement[] = [];
+
+  for (const midiPitch of midiPitches) {
+    if (midiPitch.pitch === undefined) continue;
+
+    const key = instance.keyboardElement.querySelector(
+      `[data-pitch="${midiPitch.pitch}"]`
+    );
+    if (key instanceof HTMLElement) {
+      key.classList.add("chatmusic-key-active");
+      activeKeys.push(key);
+    }
+  }
+
+  instance.activeKeyboardKeys = activeKeys;
+}
+
+function getTuneMidiPitches(instance: RenderInstance): number[] {
+  const pitches = new Set<number>();
+
+  for (const event of getTimingEvents(instance)) {
+    for (const midiPitch of event.midiPitches ?? []) {
+      if (midiPitch.pitch !== undefined) pitches.add(midiPitch.pitch);
+    }
+  }
+
+  return [...pitches].sort((first, second) => first - second);
+}
+
+function isBlackPianoKey(pitch: number): boolean {
+  return [1, 3, 6, 8, 10].includes(pitch % 12);
+}
+
+function getMidiNoteName(pitch: number): string {
+  const noteNames = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
+  const octave = Math.floor(pitch / 12) - 1;
+
+  return `${noteNames[pitch % 12]}${octave}`;
 }
 
 function flattenTimingElements(elements: unknown[] | undefined): Element[] {
@@ -366,12 +562,14 @@ export function renderAbc(
   preElement: Element,
   abcText: string,
   themeMode: ThemeMode = DEFAULT_THEME_MODE,
-  codeBlockVisibility: CodeBlockVisibility = DEFAULT_CODE_BLOCK_VISIBILITY
+  codeBlockVisibility: CodeBlockVisibility = DEFAULT_CODE_BLOCK_VISIBILITY,
+  keyboardVisibility: KeyboardVisibility = DEFAULT_KEYBOARD_VISIBILITY
 ): RenderInstance {
   // If already rendered, update instead of creating new
   const existing = instances.get(preElement);
   if (existing) {
     applyTheme(existing, themeMode);
+    applyKeyboardVisibility(existing, keyboardVisibility);
     if (existing.abcText === abcText) return existing;
     return updateRender(existing, abcText, themeMode);
   }
@@ -391,6 +589,8 @@ export function renderAbc(
   instance = {
     container: elements.container,
     scoreElement: elements.scoreElement,
+    keyboardElement: elements.keyboardElement,
+    keyboardToggleButton: elements.keyboardToggleButton,
     audioElement: elements.audioElement,
     tempoMenuElement: elements.tempoMenuElement,
     tempoInputElement: elements.tempoInputElement,
@@ -402,12 +602,20 @@ export function renderAbc(
     themeMode,
     visualObj,
     synthControl: null,
+    isKeyboardVisible: keyboardVisibility === "visible",
+    keyboardFocusStartPitch: MIDDLE_C_PITCH,
+    keyboardFocusEndPitch: MIDDLE_C_PITCH,
     activePlaybackElements: [],
+    activeKeyboardKeys: [],
     cleanup: elements.cleanup,
   };
 
   setupCodeToggleButton(instance);
+  setupKeyboardToggleButton(instance);
+  setupKeyboardResizeObserver(instance);
   applyCodeBlockVisibility(instance, codeBlockVisibility);
+  applyKeyboardVisibility(instance, keyboardVisibility);
+  setupKeyboard(instance);
   instances.set(preElement, instance);
 
   // Initialize synth (async, non-blocking)
@@ -427,6 +635,50 @@ function setupCodeToggleButton(instance: RenderInstance): void {
     instance.codeToggleButton.removeEventListener("click", toggleCode);
     previousCleanup();
   };
+}
+
+function setupKeyboardToggleButton(instance: RenderInstance): void {
+  const toggleKeyboard = () => {
+    setKeyboardVisible(instance, !instance.isKeyboardVisible);
+  };
+  const previousCleanup = instance.cleanup;
+
+  instance.keyboardToggleButton.addEventListener("click", toggleKeyboard);
+  instance.cleanup = () => {
+    instance.keyboardToggleButton.removeEventListener("click", toggleKeyboard);
+    previousCleanup();
+  };
+}
+
+function setupKeyboardResizeObserver(instance: RenderInstance): void {
+  if (typeof ResizeObserver === "undefined") return;
+
+  const observer = new ResizeObserver(() => {
+    syncKeyboardKeySize(instance);
+    if (instance.isKeyboardVisible) scrollKeyboardToFocusRange(instance);
+  });
+  const previousCleanup = instance.cleanup;
+
+  observer.observe(instance.keyboardElement);
+  instance.cleanup = () => {
+    observer.disconnect();
+    previousCleanup();
+  };
+}
+
+function applyKeyboardVisibility(
+  instance: RenderInstance,
+  keyboardVisibility: KeyboardVisibility
+): void {
+  setKeyboardVisible(instance, keyboardVisibility === "visible");
+}
+
+export function updateKeyboardVisibility(
+  keyboardVisibility: KeyboardVisibility
+): void {
+  for (const instance of instances.values()) {
+    applyKeyboardVisibility(instance, keyboardVisibility);
+  }
 }
 
 function applyCodeBlockVisibility(
@@ -496,6 +748,7 @@ function updateRender(
 
   instance.abcText = abcText;
   instance.visualObj = visualObj;
+  setupKeyboard(instance);
 
   // Re-initialize synth with new tune
   if (instance.synthControl) {

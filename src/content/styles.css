@@ -12,6 +12,11 @@
   --chatmusic-score-bg: #fff;
   --chatmusic-score-text: #111;
   --chatmusic-playback-highlight: #1f6feb;
+  --chatmusic-keyboard-bg: #f1f3f5;
+  --chatmusic-key-white-bg: #ffffff;
+  --chatmusic-key-white-text: #6b7280;
+  --chatmusic-key-black-bg: #2f343d;
+  --chatmusic-key-black-text: #d1d5db;
   --chatmusic-audio-border: #eee;
   --chatmusic-audio-bg: #f6f7f8;
   --chatmusic-audio-control: #374151;
@@ -42,6 +47,11 @@
   --chatmusic-score-bg: #17191c;
   --chatmusic-score-text: #d9dee5;
   --chatmusic-playback-highlight: #7dd3fc;
+  --chatmusic-keyboard-bg: #262a31;
+  --chatmusic-key-white-bg: #d9dee5;
+  --chatmusic-key-white-text: #4b5563;
+  --chatmusic-key-black-bg: #0f1115;
+  --chatmusic-key-black-text: #cbd5e1;
   --chatmusic-audio-border: #34373d;
   --chatmusic-audio-bg: #2b2f36;
   --chatmusic-audio-control: #d9dee5;
@@ -120,6 +130,7 @@
 }
 
 .chatmusic-tempo-button,
+.chatmusic-keyboard-toggle-button,
 .chatmusic-code-toggle-button,
 .chatmusic-fullscreen-button {
   all: unset;
@@ -149,12 +160,56 @@
   font-weight: 600;
 }
 
+.chatmusic-keyboard-toggle-button[hidden] {
+  display: none;
+}
+
+.chatmusic-keyboard-icon {
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(3, 5px);
+  width: 17px;
+  height: 15px;
+  color: currentColor;
+}
+
+.chatmusic-keyboard-icon-white {
+  display: block;
+  box-sizing: border-box;
+  height: 15px;
+  border: 1.5px solid currentColor;
+  background: transparent;
+}
+
+.chatmusic-keyboard-icon-white + .chatmusic-keyboard-icon-white {
+  border-left-width: 0;
+}
+
+.chatmusic-keyboard-icon-black {
+  position: absolute;
+  top: 1.5px;
+  width: 4px;
+  height: 8px;
+  border-radius: 0 0 1px 1px;
+  background: currentColor;
+}
+
+.chatmusic-keyboard-icon-black:nth-of-type(4) {
+  left: 4px;
+}
+
+.chatmusic-keyboard-icon-black:nth-of-type(5) {
+  left: 9px;
+}
+
 :host(:fullscreen) .chatmusic-code-toggle-button {
   display: none;
 }
 
 .chatmusic-tempo-button:hover,
 .chatmusic-tempo-menu[open] .chatmusic-tempo-button,
+.chatmusic-keyboard-toggle-button:hover,
+.chatmusic-keyboard-toggle-button[aria-pressed="true"],
 .chatmusic-code-toggle-button:hover,
 .chatmusic-code-toggle-button[aria-pressed="true"],
 .chatmusic-fullscreen-button:hover,
@@ -164,6 +219,7 @@
 }
 
 .chatmusic-tempo-button:focus-visible,
+.chatmusic-keyboard-toggle-button:focus-visible,
 .chatmusic-code-toggle-button:focus-visible,
 .chatmusic-fullscreen-button:focus-visible {
   outline: 2px solid var(--chatmusic-audio-thumb);
@@ -228,6 +284,107 @@
 :host(:fullscreen) .chatmusic-score svg {
   width: 100%;
   max-width: none;
+}
+
+.chatmusic-keyboard {
+  --chatmusic-white-key-width: 20px;
+  --chatmusic-black-key-width: 12px;
+  --chatmusic-black-key-offset: -6px;
+  display: flex;
+  align-items: flex-start;
+  gap: 0;
+  min-height: 64px;
+  margin-top: 10px;
+  padding: 6px 8px;
+  overflow-x: auto;
+  background: var(--chatmusic-keyboard-bg);
+  border-radius: 4px;
+}
+
+.chatmusic-keyboard[hidden] {
+  display: none;
+}
+
+:host(:fullscreen) .chatmusic-keyboard {
+  min-height: 84px;
+}
+
+.chatmusic-piano-key {
+  position: relative;
+  box-sizing: border-box;
+  flex: 0 0 auto;
+  border-radius: 0 0 3px 3px;
+  transition: background-color 120ms ease, color 120ms ease, box-shadow 120ms ease;
+}
+
+.chatmusic-piano-key::after {
+  content: "";
+  position: absolute;
+  right: 2px;
+  bottom: 3px;
+  font-size: 8px;
+  line-height: 1;
+}
+
+.chatmusic-piano-key-white[data-note^="C"]::after {
+  content: attr(data-note);
+}
+
+.chatmusic-piano-key-white {
+  z-index: 1;
+  width: var(--chatmusic-white-key-width);
+  height: 52px;
+  border: 1px solid var(--chatmusic-audio-border);
+  border-left-width: 0;
+  background: var(--chatmusic-key-white-bg);
+  color: var(--chatmusic-key-white-text);
+}
+
+.chatmusic-piano-key-white:first-child {
+  border-left-width: 1px;
+}
+
+.chatmusic-piano-key-black {
+  z-index: 2;
+  width: var(--chatmusic-black-key-width);
+  height: 32px;
+  margin: 0 var(--chatmusic-black-key-offset);
+  border: 0;
+  background: var(--chatmusic-key-black-bg);
+  color: var(--chatmusic-key-black-text);
+  box-shadow: inset 0 0 0 1px rgb(255 255 255 / 18%);
+}
+
+.chatmusic-piano-key-black::after {
+  display: none;
+}
+
+.chatmusic-piano-key-white.chatmusic-key-in-tune {
+  box-shadow: inset 0 -3px 0 var(--chatmusic-audio-thumb);
+}
+
+.chatmusic-piano-key-black.chatmusic-key-in-tune {
+  box-shadow:
+    inset 0 0 0 1px rgb(255 255 255 / 18%),
+    0 2px 0 var(--chatmusic-audio-thumb);
+}
+
+.chatmusic-key-middle-c::before {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 8px;
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  background: var(--chatmusic-audio-thumb);
+  transform: translateX(-50%);
+}
+
+.chatmusic-key-active {
+  background: var(--chatmusic-playback-highlight);
+  color: var(--chatmusic-score-bg);
+  box-shadow: inset 0 0 0 2px rgb(255 255 255 / 35%);
 }
 
 .chatmusic-score .chatmusic-note-playing,
