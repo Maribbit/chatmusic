@@ -11,6 +11,7 @@
   --chatmusic-muted-text: #888;
   --chatmusic-score-bg: #fff;
   --chatmusic-score-text: #111;
+  --chatmusic-playback-highlight: #1f6feb;
   --chatmusic-audio-border: #eee;
   --chatmusic-audio-bg: #f6f7f8;
   --chatmusic-audio-control: #374151;
@@ -40,6 +41,7 @@
   --chatmusic-muted-text: #b4bac1;
   --chatmusic-score-bg: #17191c;
   --chatmusic-score-text: #d9dee5;
+  --chatmusic-playback-highlight: #7dd3fc;
   --chatmusic-audio-border: #34373d;
   --chatmusic-audio-bg: #2b2f36;
   --chatmusic-audio-control: #d9dee5;
@@ -226,6 +228,12 @@
 :host(:fullscreen) .chatmusic-score svg {
   width: 100%;
   max-width: none;
+}
+
+.chatmusic-score .chatmusic-note-playing,
+.chatmusic-score .chatmusic-note-playing * {
+  fill: var(--chatmusic-playback-highlight) !important;
+  stroke: var(--chatmusic-playback-highlight) !important;
 }
 
 .chatmusic-audio {

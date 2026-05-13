@@ -11,6 +11,7 @@ This project follows a lightweight [Keep a Changelog](https://keepachangelog.com
 - Popup theme mode control for automatic, light, and dark rendered score themes.
 - Automatic rendered score theme detection based on the host page background.
 - Fullscreen control for enlarging rendered scores during practice.
+- Playback note highlighting and note click seeking in rendered scores.
 - Source code collapse controls with configurable default visibility.
 - Changelog and version consistency checks for release preparation.
 

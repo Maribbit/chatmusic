@@ -27,7 +27,35 @@ export interface RenderInstance {
   themeMode: ThemeMode;
   visualObj: abcjs.TuneObject[] | null;
   synthControl: abcjs.SynthObjectController | null;
+  activePlaybackElements: Element[];
   cleanup: () => void;
+}
+
+interface AbcElementRef {
+  startChar?: number;
+  endChar?: number;
+}
+
+interface TimingEvent {
+  type?: string;
+  milliseconds: number;
+  elements?: unknown[];
+  startChar?: number | null;
+  endChar?: number | null;
+  startCharArray?: Array<number | null>;
+  endCharArray?: Array<number | null>;
+}
+
+type TimedTuneObject = Omit<abcjs.TuneObject, "setTiming"> & {
+  noteTimings?: TimingEvent[];
+  setTiming?: (qpm?: number, measuresOfDelay?: number) => TimingEvent[];
+};
+
+interface SeekableSynthControl extends abcjs.SynthObjectController {
+  seek?: (percent: number) => void;
+  runWhenReady?: (
+    fn: () => Promise<{ status: string }>
+  ) => Promise<unknown>;
 }
 
 interface RenderElements {
@@ -180,7 +208,7 @@ async function initSynth(instance: RenderInstance): Promise<void> {
 
   try {
     const synthControl = new abcjs.synth.SynthController();
-    synthControl.load(audioEl, null, {
+    synthControl.load(audioEl, createCursorControl(instance), {
       displayRestart: true,
       displayPlay: true,
       displayProgress: true,
@@ -194,6 +222,123 @@ async function initSynth(instance: RenderInstance): Promise<void> {
     console.error("[ChatMusic] Synth init error:", err);
     audioEl.innerHTML = '<p class="chatmusic-no-audio">Failed to initialize audio playback.</p>';
   }
+}
+
+function createCursorControl(instance: RenderInstance): object {
+  return {
+    onStart: () => clearPlaybackHighlight(instance),
+    onEvent: (event: TimingEvent) => highlightTimingEvent(instance, event),
+    onFinished: () => clearPlaybackHighlight(instance),
+  };
+}
+
+function highlightTimingEvent(
+  instance: RenderInstance,
+  event: TimingEvent
+): void {
+  clearPlaybackHighlight(instance);
+
+  const elements = flattenTimingElements(event.elements);
+  for (const element of elements) {
+    element.classList.add("chatmusic-note-playing");
+  }
+
+  instance.activePlaybackElements = elements;
+}
+
+function clearPlaybackHighlight(instance: RenderInstance): void {
+  for (const element of instance.activePlaybackElements) {
+    element.classList.remove("chatmusic-note-playing");
+  }
+  instance.activePlaybackElements = [];
+}
+
+function flattenTimingElements(elements: unknown[] | undefined): Element[] {
+  if (!elements) return [];
+
+  const flattened: Element[] = [];
+  for (const item of elements) {
+    if (item instanceof Element) {
+      flattened.push(item);
+    } else if (Array.isArray(item)) {
+      flattened.push(...flattenTimingElements(item));
+    }
+  }
+
+  return flattened;
+}
+
+async function seekToAbcElement(
+  instance: RenderInstance,
+  abcElement: AbcElementRef
+): Promise<void> {
+  const percent = getSeekPercentForElement(instance, abcElement);
+  if (percent === null || !instance.synthControl) return;
+
+  const synthControl = instance.synthControl as SeekableSynthControl;
+  const seek = () => {
+    synthControl.seek?.(percent);
+    return Promise.resolve({ status: "ok" });
+  };
+
+  if (synthControl.runWhenReady) {
+    await synthControl.runWhenReady(seek);
+  } else {
+    seek();
+  }
+}
+
+function getSeekPercentForElement(
+  instance: RenderInstance,
+  abcElement: AbcElementRef
+): number | null {
+  if (abcElement.startChar === undefined || abcElement.endChar === undefined) {
+    return null;
+  }
+
+  const timingEvents = getTimingEvents(instance);
+  const lastEvent = timingEvents[timingEvents.length - 1];
+  if (!lastEvent || lastEvent.milliseconds <= 0) return null;
+
+  const matchingEvent = timingEvents.find((event) =>
+    timingEventMatchesElement(event, abcElement)
+  );
+  if (!matchingEvent) return null;
+
+  return matchingEvent.milliseconds / lastEvent.milliseconds;
+}
+
+function getTimingEvents(instance: RenderInstance): TimingEvent[] {
+  const tune = instance.visualObj?.[0] as TimedTuneObject | undefined;
+  if (!tune) return [];
+
+  if (!tune.noteTimings || tune.noteTimings.length === 0) {
+    tune.noteTimings = tune.setTiming?.(0, 0) ?? [];
+  }
+
+  return tune.noteTimings;
+}
+
+function timingEventMatchesElement(
+  event: TimingEvent,
+  abcElement: AbcElementRef
+): boolean {
+  if (event.type && event.type !== "event") return false;
+
+  const starts = event.startCharArray ?? [event.startChar ?? null];
+  const ends = event.endCharArray ?? [event.endChar ?? null];
+
+  return starts.some((start, index) => {
+    const end = ends[index];
+    return (
+      start !== null &&
+      end !== null &&
+      abcElement.endChar !== undefined &&
+      abcElement.startChar !== undefined &&
+      abcElement.endChar > start &&
+      abcElement.startChar < end
+    );
+  });
 }
 
 function setupTempoControl(instance: RenderInstance): void {
@@ -234,12 +379,16 @@ export function renderAbc(
   const elements = createContainer(preElement, themeMode);
 
   // Render sheet music SVG
+  let instance: RenderInstance | null = null;
   const visualObj = abcjs.renderAbc(elements.scoreElement, abcText, {
     responsive: "resize",
     add_classes: true,
+    clickListener: (abcElement: AbcElementRef) => {
+      if (instance) void seekToAbcElement(instance, abcElement);
+    },
   });
 
-  const instance: RenderInstance = {
+  instance = {
     container: elements.container,
     scoreElement: elements.scoreElement,
     audioElement: elements.audioElement,
@@ -253,6 +402,7 @@ export function renderAbc(
     themeMode,
     visualObj,
     synthControl: null,
+    activePlaybackElements: [],
     cleanup: elements.cleanup,
   };
 
@@ -333,11 +483,15 @@ function updateRender(
   themeMode: ThemeMode
 ): RenderInstance {
   applyTheme(instance, themeMode);
+  clearPlaybackHighlight(instance);
 
   // Re-render SVG
   const visualObj = abcjs.renderAbc(instance.scoreElement, abcText, {
     responsive: "resize",
     add_classes: true,
+    clickListener: (abcElement: AbcElementRef) => {
+      void seekToAbcElement(instance, abcElement);
+    },
   });
 
   instance.abcText = abcText;
