@@ -10,11 +10,13 @@ This project follows a lightweight [Keep a Changelog](https://keepachangelog.com
 
 - Popup theme mode control for automatic, light, and dark rendered score themes.
 - Automatic rendered score theme detection based on the host page background.
+- Fullscreen control for enlarging rendered scores during practice.
 - Changelog and version consistency checks for release preparation.
 
 ### Changed
 
 - Rendered scores use isolated theme styles inside the Shadow DOM.
+- Rendered score controls use a compact header with fullscreen and tempo controls.
 
 ## [0.1.0] - 2026-05-13
 

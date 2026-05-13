@@ -12,17 +12,23 @@ export interface RenderInstance {
   container: HTMLElement;
   scoreElement: HTMLElement;
   audioElement: HTMLElement;
+  tempoMenuElement: HTMLElement;
+  tempoInputElement: HTMLInputElement;
   preElement: Element;
   abcText: string;
   themeMode: ThemeMode;
   visualObj: abcjs.TuneObject[] | null;
   synthControl: abcjs.SynthObjectController | null;
+  cleanup: () => void;
 }
 
 interface RenderElements {
   container: HTMLElement;
   scoreElement: HTMLElement;
   audioElement: HTMLElement;
+  tempoMenuElement: HTMLElement;
+  tempoInputElement: HTMLInputElement;
+  cleanup: () => void;
 }
 
 const instances = new Map<Element, RenderInstance>();
@@ -49,11 +55,28 @@ function createContainer(
 
   container.innerHTML = `
     <div class="chatmusic-header">
-      <span class="chatmusic-label">🎵 ChatMusic</span>
+      <span class="chatmusic-label">ChatMusic</span>
+      <div class="chatmusic-header-actions">
+        <details class="chatmusic-tempo-menu" hidden>
+          <summary class="chatmusic-tempo-button" title="Tempo" aria-label="Tempo">♩</summary>
+          <div class="chatmusic-tempo-panel">
+            <label class="chatmusic-tempo-field">
+              <input class="chatmusic-tempo-input" type="number" min="1" max="300" value="100" aria-label="Playback speed">
+              <span>%</span>
+            </label>
+          </div>
+        </details>
+        <button class="chatmusic-fullscreen-button" type="button" title="Enter fullscreen" aria-label="Enter fullscreen" aria-pressed="false">⛶</button>
+      </div>
     </div>
     <div class="chatmusic-score"></div>
     <div class="chatmusic-audio"></div>
   `;
+
+  const fullscreenButton = container.querySelector(
+    ".chatmusic-fullscreen-button"
+  ) as HTMLButtonElement;
+  const cleanup = setupFullscreenButton(host, fullscreenButton);
 
   shadowRoot.append(style, container);
 
@@ -64,6 +87,53 @@ function createContainer(
     container: host,
     scoreElement: container.querySelector(".chatmusic-score") as HTMLElement,
     audioElement: container.querySelector(".chatmusic-audio") as HTMLElement,
+    tempoMenuElement: container.querySelector(
+      ".chatmusic-tempo-menu"
+    ) as HTMLElement,
+    tempoInputElement: container.querySelector(
+      ".chatmusic-tempo-input"
+    ) as HTMLInputElement,
+    cleanup,
+  };
+}
+
+function setupFullscreenButton(
+  host: HTMLElement,
+  button: HTMLButtonElement
+): () => void {
+  if (!document.fullscreenEnabled || !host.requestFullscreen) {
+    button.hidden = true;
+    return () => {};
+  }
+
+  const updateButtonState = () => {
+    const isFullscreen = document.fullscreenElement === host;
+    const label = isFullscreen ? "Exit fullscreen" : "Enter fullscreen";
+
+    button.title = label;
+    button.setAttribute("aria-label", label);
+    button.setAttribute("aria-pressed", String(isFullscreen));
+  };
+
+  const toggleFullscreen = async () => {
+    try {
+      if (document.fullscreenElement === host) {
+        await document.exitFullscreen();
+      } else {
+        await host.requestFullscreen();
+      }
+    } catch (err) {
+      console.warn("[ChatMusic] Fullscreen toggle failed:", err);
+    }
+  };
+
+  button.addEventListener("click", toggleFullscreen);
+  document.addEventListener("fullscreenchange", updateButtonState);
+  updateButtonState();
+
+  return () => {
+    button.removeEventListener("click", toggleFullscreen);
+    document.removeEventListener("fullscreenchange", updateButtonState);
   };
 }
 
@@ -87,6 +157,8 @@ async function initSynth(instance: RenderInstance): Promise<void> {
   if (!instance.visualObj || instance.visualObj.length === 0) return;
 
   const audioEl = instance.audioElement;
+  instance.tempoMenuElement.hidden = true;
+  instance.tempoInputElement.onchange = null;
 
   if (!abcjs.synth.supportsAudio()) {
     audioEl.innerHTML = '<p class="chatmusic-no-audio">Audio playback not supported in this browser.</p>';
@@ -103,11 +175,29 @@ async function initSynth(instance: RenderInstance): Promise<void> {
     });
 
     await synthControl.setTune(instance.visualObj[0], false);
+    setupTempoControl(instance);
     instance.synthControl = synthControl;
   } catch (err) {
     console.error("[ChatMusic] Synth init error:", err);
     audioEl.innerHTML = '<p class="chatmusic-no-audio">Failed to initialize audio playback.</p>';
   }
+}
+
+function setupTempoControl(instance: RenderInstance): void {
+  const nativeTempoInput = instance.audioElement.querySelector(
+    ".abcjs-midi-tempo"
+  ) as HTMLInputElement | null;
+
+  if (!nativeTempoInput) return;
+
+  instance.tempoInputElement.value = nativeTempoInput.value;
+  instance.tempoInputElement.min = nativeTempoInput.min;
+  instance.tempoInputElement.max = nativeTempoInput.max;
+  instance.tempoInputElement.onchange = () => {
+    nativeTempoInput.value = instance.tempoInputElement.value;
+    nativeTempoInput.dispatchEvent(new Event("change", { bubbles: true }));
+  };
+  instance.tempoMenuElement.hidden = false;
 }
 
 /**
@@ -139,11 +229,14 @@ export function renderAbc(
     container: elements.container,
     scoreElement: elements.scoreElement,
     audioElement: elements.audioElement,
+    tempoMenuElement: elements.tempoMenuElement,
+    tempoInputElement: elements.tempoInputElement,
     preElement,
     abcText,
     themeMode,
     visualObj,
     synthControl: null,
+    cleanup: elements.cleanup,
   };
 
   instances.set(preElement, instance);
@@ -203,6 +296,7 @@ export function removeRender(preElement: Element): void {
     if (instance.synthControl) {
       instance.synthControl.pause();
     }
+    instance.cleanup();
     instance.container.remove();
     instances.delete(preElement);
   }
