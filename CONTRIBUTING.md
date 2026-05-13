@@ -39,7 +39,15 @@ Run the full check before opening a pull request:
 npm run check
 ```
 
-This runs dependency audit, ESLint, TypeScript, unit tests, and production build.
+This runs dependency audit, version consistency checks, ESLint, TypeScript, unit tests, and production build.
+
+## Versioning and Changelog
+
+- Keep `version` in [package.json](package.json) and [manifest.json](manifest.json) synchronized.
+- Use numeric `X.Y.Z` versions for Chrome extension releases. Chrome does not accept npm prerelease strings in `manifest.json`; use release notes or store metadata for prerelease context instead.
+- Update [CHANGELOG.md](CHANGELOG.md) for user-visible changes, release process changes, permission changes, and compatibility notes.
+- Keep unreleased work under the `Unreleased` heading until preparing a Chrome Web Store release.
+- Run `npm run version:check` after changing either version file.
 
 ## Code Style
 

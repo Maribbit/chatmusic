@@ -14,7 +14,8 @@ Before committing:
 
 1. Run `npm run check`.
 2. Confirm `dist/`, `node_modules/`, package archives, and signing keys are not staged.
-3. Summarize behavior changes and test coverage in the final response or pull request.
+3. Update [CHANGELOG.md](../CHANGELOG.md) for user-visible behavior or release process changes.
+4. Summarize behavior changes and test coverage in the final response or pull request.
 
 ## Preferred Agent Behavior
 
@@ -44,3 +45,5 @@ refactor: behavior-preserving code changes
 ## Release Awareness
 
 Agents should not publish the extension, create Chrome Web Store packages, or tag releases unless the user explicitly asks. Release preparation should follow [docs/release.md](release.md).
+
+When changing versions, keep `package.json` and `manifest.json` synchronized, use numeric `X.Y.Z` versions, update [CHANGELOG.md](../CHANGELOG.md), and run `npm run version:check` or `npm run check`.

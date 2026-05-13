@@ -18,6 +18,7 @@
 
 - Run `npm run check` before committing or reporting completion for code changes.
 - For narrower feedback, use `npm run lint`, `npm run typecheck`, `npm run test`, and `npm run build`.
+- Use `npm run version:check` after changing `package.json` or `manifest.json` versions.
 - Add or update Vitest unit tests for detector logic and state transitions when behavior changes.
 
 ## Repository Conventions
@@ -25,6 +26,8 @@
 - Do not commit `dist/`, `node_modules/`, `*.crx`, `*.pem`, or packaged zip files.
 - Keep `package-lock.json` committed.
 - Use conventional commit prefixes such as `feat:`, `fix:`, `test:`, `docs:`, `chore:`, `ci:`, and `refactor:`.
+- Keep `package.json` and `manifest.json` versions synchronized with numeric `X.Y.Z` values.
+- Update `CHANGELOG.md` for user-visible changes, release process changes, permission changes, and compatibility notes.
 - Explain any `manifest.json` permission or host permission changes.
 - Do not tag releases, create Chrome Web Store packages, or publish without an explicit user request.
 
