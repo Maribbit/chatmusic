@@ -5,7 +5,12 @@
 import abcjs from "abcjs";
 import abcjsAudioStyles from "abcjs/abcjs-audio.css?inline";
 import chatmusicStyles from "./styles.css?inline";
-import { DEFAULT_THEME_MODE, type ThemeMode } from "../shared/settings";
+import {
+  DEFAULT_CODE_BLOCK_VISIBILITY,
+  DEFAULT_THEME_MODE,
+  type CodeBlockVisibility,
+  type ThemeMode,
+} from "../shared/settings";
 import { resolveTheme } from "./theme";
 
 export interface RenderInstance {
@@ -14,7 +19,10 @@ export interface RenderInstance {
   audioElement: HTMLElement;
   tempoMenuElement: HTMLElement;
   tempoInputElement: HTMLInputElement;
+  codeToggleButton: HTMLButtonElement;
   preElement: Element;
+  preElementOriginalDisplay: string | null;
+  isCodeCollapsed: boolean;
   abcText: string;
   themeMode: ThemeMode;
   visualObj: abcjs.TuneObject[] | null;
@@ -28,6 +36,7 @@ interface RenderElements {
   audioElement: HTMLElement;
   tempoMenuElement: HTMLElement;
   tempoInputElement: HTMLInputElement;
+  codeToggleButton: HTMLButtonElement;
   cleanup: () => void;
 }
 
@@ -67,6 +76,7 @@ function createContainer(
           </div>
         </details>
         <button class="chatmusic-fullscreen-button" type="button" title="Enter fullscreen" aria-label="Enter fullscreen" aria-pressed="false">⛶</button>
+        <button class="chatmusic-code-toggle-button" type="button" title="Hide source code" aria-label="Hide source code" aria-pressed="true">&lt;/&gt;</button>
       </div>
     </div>
     <div class="chatmusic-score"></div>
@@ -93,6 +103,9 @@ function createContainer(
     tempoInputElement: container.querySelector(
       ".chatmusic-tempo-input"
     ) as HTMLInputElement,
+    codeToggleButton: container.querySelector(
+      ".chatmusic-code-toggle-button"
+    ) as HTMLButtonElement,
     cleanup,
   };
 }
@@ -207,7 +220,8 @@ function setupTempoControl(instance: RenderInstance): void {
 export function renderAbc(
   preElement: Element,
   abcText: string,
-  themeMode: ThemeMode = DEFAULT_THEME_MODE
+  themeMode: ThemeMode = DEFAULT_THEME_MODE,
+  codeBlockVisibility: CodeBlockVisibility = DEFAULT_CODE_BLOCK_VISIBILITY
 ): RenderInstance {
   // If already rendered, update instead of creating new
   const existing = instances.get(preElement);
@@ -231,7 +245,10 @@ export function renderAbc(
     audioElement: elements.audioElement,
     tempoMenuElement: elements.tempoMenuElement,
     tempoInputElement: elements.tempoInputElement,
+    codeToggleButton: elements.codeToggleButton,
     preElement,
+    preElementOriginalDisplay: null,
+    isCodeCollapsed: false,
     abcText,
     themeMode,
     visualObj,
@@ -239,12 +256,72 @@ export function renderAbc(
     cleanup: elements.cleanup,
   };
 
+  setupCodeToggleButton(instance);
+  applyCodeBlockVisibility(instance, codeBlockVisibility);
   instances.set(preElement, instance);
 
   // Initialize synth (async, non-blocking)
   initSynth(instance);
 
   return instance;
+}
+
+function setupCodeToggleButton(instance: RenderInstance): void {
+  const toggleCode = () => {
+    setCodeCollapsed(instance, !instance.isCodeCollapsed);
+  };
+  const previousCleanup = instance.cleanup;
+
+  instance.codeToggleButton.addEventListener("click", toggleCode);
+  instance.cleanup = () => {
+    instance.codeToggleButton.removeEventListener("click", toggleCode);
+    previousCleanup();
+  };
+}
+
+function applyCodeBlockVisibility(
+  instance: RenderInstance,
+  codeBlockVisibility: CodeBlockVisibility
+): void {
+  setCodeCollapsed(instance, codeBlockVisibility === "collapsed");
+}
+
+function setCodeCollapsed(
+  instance: RenderInstance,
+  isCollapsed: boolean
+): void {
+  if (!(instance.preElement instanceof HTMLElement)) return;
+
+  if (instance.preElementOriginalDisplay === null) {
+    instance.preElementOriginalDisplay = instance.preElement.style.display;
+  }
+
+  instance.isCodeCollapsed = isCollapsed;
+  instance.preElement.style.display = isCollapsed
+    ? "none"
+    : instance.preElementOriginalDisplay;
+  updateCodeToggleButton(instance);
+}
+
+function updateCodeToggleButton(instance: RenderInstance): void {
+  const label = instance.isCodeCollapsed
+    ? "Show source code"
+    : "Hide source code";
+
+  instance.codeToggleButton.title = label;
+  instance.codeToggleButton.setAttribute("aria-label", label);
+  instance.codeToggleButton.setAttribute(
+    "aria-pressed",
+    String(!instance.isCodeCollapsed)
+  );
+}
+
+export function updateCodeBlockVisibility(
+  codeBlockVisibility: CodeBlockVisibility
+): void {
+  for (const instance of instances.values()) {
+    applyCodeBlockVisibility(instance, codeBlockVisibility);
+  }
 }
 
 /**
@@ -296,6 +373,7 @@ export function removeRender(preElement: Element): void {
     if (instance.synthControl) {
       instance.synthControl.pause();
     }
+    setCodeCollapsed(instance, false);
     instance.cleanup();
     instance.container.remove();
     instances.delete(preElement);

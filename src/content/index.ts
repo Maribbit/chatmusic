@@ -3,11 +3,20 @@
  * Sets up MutationObserver to detect ABC notation blocks in AI chat apps.
  */
 import { scanForAbc } from "./detector";
-import { renderAbc, hasRender, updateRenderThemes } from "./renderer";
 import {
+  renderAbc,
+  hasRender,
+  updateRenderThemes,
+  updateCodeBlockVisibility,
+} from "./renderer";
+import {
+  CODE_BLOCK_VISIBILITY_STORAGE_KEY,
+  DEFAULT_CODE_BLOCK_VISIBILITY,
   DEFAULT_THEME_MODE,
   THEME_MODE_STORAGE_KEY,
+  normalizeCodeBlockVisibility,
   normalizeThemeMode,
+  type CodeBlockVisibility,
   type ThemeMode,
 } from "../shared/settings";
 
@@ -25,6 +34,9 @@ let enabled = true;
 /** Rendered score theme preference */
 let themeMode: ThemeMode = DEFAULT_THEME_MODE;
 
+/** Source code visibility preference */
+let codeBlockVisibility: CodeBlockVisibility = DEFAULT_CODE_BLOCK_VISIBILITY;
+
 let domObserverStarted = false;
 let themeObserverStarted = false;
 
@@ -41,7 +53,12 @@ function fullScan(): void {
   for (const result of results) {
     const lastText = processedText.get(result.element);
     if (lastText !== result.abcText || !hasRender(result.element)) {
-      renderAbc(result.element, result.abcText, themeMode);
+      renderAbc(
+        result.element,
+        result.abcText,
+        themeMode,
+        codeBlockVisibility
+      );
       processedText.set(result.element, result.abcText);
       detected++;
     }
@@ -159,6 +176,13 @@ function setupMessageListener(): void {
       themeMode = normalizeThemeMode(message.themeMode);
       updateRenderThemes(themeMode);
     }
+
+    if (message.type === "SET_CODE_BLOCK_VISIBILITY") {
+      codeBlockVisibility = normalizeCodeBlockVisibility(
+        message.codeBlockVisibility
+      );
+      updateCodeBlockVisibility(codeBlockVisibility);
+    }
   });
 }
 
@@ -170,12 +194,17 @@ async function loadState(): Promise<void> {
     const result = await chrome.storage.sync.get([
       "enabled",
       THEME_MODE_STORAGE_KEY,
+      CODE_BLOCK_VISIBILITY_STORAGE_KEY,
     ]);
     enabled = result.enabled !== false; // Default to enabled
     themeMode = normalizeThemeMode(result[THEME_MODE_STORAGE_KEY]);
+    codeBlockVisibility = normalizeCodeBlockVisibility(
+      result[CODE_BLOCK_VISIBILITY_STORAGE_KEY]
+    );
   } catch {
     enabled = true;
     themeMode = DEFAULT_THEME_MODE;
+    codeBlockVisibility = DEFAULT_CODE_BLOCK_VISIBILITY;
   }
 }
 
