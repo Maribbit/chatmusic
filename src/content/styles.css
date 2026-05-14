@@ -251,7 +251,8 @@
 
 .chatmusic-score {
   width: 100%;
-  overflow-x: auto;
+  max-height: min(56vh, 620px);
+  overflow: auto;
   background: var(--chatmusic-score-bg);
   color: var(--chatmusic-score-text);
   border-radius: 0;
@@ -259,8 +260,15 @@
 
 :host(:fullscreen) .chatmusic-score {
   flex: 1 1 auto;
+  max-height: none;
   min-height: 0;
   overflow: auto;
+}
+
+:host(:fullscreen) .chatmusic-header,
+:host(:fullscreen) .chatmusic-keyboard,
+:host(:fullscreen) .chatmusic-audio {
+  flex: 0 0 auto;
 }
 
 .chatmusic-score svg {
