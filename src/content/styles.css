@@ -432,8 +432,22 @@
 }
 
 .chatmusic-audio .abcjs-inline-audio .abcjs-midi-clock,
+.chatmusic-audio .abcjs-inline-audio .chatmusic-total-duration,
 .chatmusic-audio .abcjs-inline-audio .abcjs-tempo-wrapper {
   color: var(--chatmusic-audio-control);
+}
+
+.chatmusic-audio .abcjs-inline-audio .abcjs-midi-clock,
+.chatmusic-audio .abcjs-inline-audio .chatmusic-total-duration {
+  font-family: inherit;
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.chatmusic-audio .abcjs-inline-audio .chatmusic-total-duration {
+  margin: 1px 6px 0 0;
+  color: var(--chatmusic-muted-text);
 }
 
 .chatmusic-audio .abcjs-inline-audio .abcjs-midi-tempo {

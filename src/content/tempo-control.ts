@@ -20,7 +20,8 @@ export interface TempoControl {
 export function createTempoControl(
   menuElement: HTMLElement,
   inputElement: HTMLInputElement,
-  bpmElement: HTMLElement
+  bpmElement: HTMLElement,
+  onWarpChange: (warpPercent: number | null) => void = () => {}
 ): TempoControl {
   const button = menuElement.querySelector(".chatmusic-tempo-button");
   let activeTune: TempoTune | undefined;
@@ -59,17 +60,20 @@ export function createTempoControl(
 
       const syncTempo = () => {
         if (parseWarpPercent(inputElement.value) === null) {
+          onWarpChange(null);
           update();
           return;
         }
 
         nativeTempoInput.value = inputElement.value;
         nativeTempoInput.dispatchEvent(new Event("change", { bubbles: true }));
+        onWarpChange(parseWarpPercent(inputElement.value));
         update();
       };
 
       inputElement.oninput = syncTempo;
       inputElement.onchange = syncTempo;
+      onWarpChange(parseWarpPercent(inputElement.value));
       update();
       menuElement.hidden = false;
     },

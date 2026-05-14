@@ -13,6 +13,8 @@ import {
   type KeyboardVisibility,
   type ThemeMode,
 } from "../shared/settings";
+import { createDurationControl, type DurationControl } from "./duration-control";
+import { getTuneDurationSeconds } from "./duration";
 import {
   createKeyboardController,
   type KeyboardController,
@@ -27,6 +29,7 @@ export interface RenderInstance {
   keyboard: KeyboardController;
   audioElement: HTMLElement;
   tempoControl: TempoControl;
+  durationControl: DurationControl;
   codeToggleButton: HTMLButtonElement;
   preElement: Element;
   preElementOriginalDisplay: string | null;
@@ -80,6 +83,7 @@ async function initSynth(instance: RenderInstance): Promise<void> {
 
   const audioEl = instance.audioElement;
   instance.tempoControl.reset();
+  instance.durationControl.reset();
 
   if (!abcjs.synth.supportsAudio()) {
     audioEl.innerHTML = '<p class="chatmusic-no-audio">Audio playback not supported in this browser.</p>';
@@ -96,6 +100,7 @@ async function initSynth(instance: RenderInstance): Promise<void> {
     });
 
     await synthControl.setTune(instance.visualObj[0], false);
+  setupDurationControl(instance);
     setupTempoControl(instance);
     instance.synthControl = synthControl;
   } catch (err) {
@@ -258,6 +263,13 @@ function setupTempoControl(instance: RenderInstance): void {
   instance.tempoControl.connect(nativeTempoInput, instance.visualObj?.[0]);
 }
 
+function setupDurationControl(instance: RenderInstance): void {
+  instance.durationControl.mount(instance.audioElement);
+  instance.durationControl.setDuration(
+    getTuneDurationSeconds(instance.visualObj?.[0], getTimingEvents(instance))
+  );
+}
+
 /**
  * Render ABC notation for a given <pre> element.
  * Creates the container, renders SVG, and sets up playback.
@@ -284,10 +296,12 @@ export function renderAbc(
     elements.keyboardToggleButton,
     keyboardVisibility === "visible"
   );
+  const durationControl = createDurationControl();
   const tempoControl = createTempoControl(
     elements.tempoMenuElement,
     elements.tempoInputElement,
-    elements.tempoBpmElement
+    elements.tempoBpmElement,
+    (warpPercent) => durationControl.setWarp(warpPercent)
   );
 
   // Render sheet music SVG
@@ -306,6 +320,7 @@ export function renderAbc(
     keyboard,
     audioElement: elements.audioElement,
     tempoControl,
+    durationControl,
     codeToggleButton: elements.codeToggleButton,
     preElement,
     preElementOriginalDisplay: null,
