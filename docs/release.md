@@ -25,7 +25,7 @@ Then build the extension:
 npm run build
 ```
 
-Load `dist/` as an unpacked extension in Chrome and manually verify:
+Load `dist/` as an unpacked extension in Chrome and run the [manual QA checklist](manual-qa.md), including:
 
 - ABC blocks are detected.
 - Scores render below matching code blocks.
