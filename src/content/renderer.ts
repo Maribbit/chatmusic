@@ -25,6 +25,7 @@ import {
   getScoreSvg,
   getSvgDownloadFilename,
 } from "./svg-export";
+import { getLocalPianoSynthOptions } from "./soundfont";
 import { createTempoControl, type TempoControl } from "./tempo-control";
 import { applyRenderViewTheme, createRenderView } from "./view";
 
@@ -105,7 +106,11 @@ async function initSynth(instance: RenderInstance): Promise<void> {
       displayWarp: true,
     });
 
-    await synthControl.setTune(instance.visualObj[0], false);
+    await synthControl.setTune(
+      instance.visualObj[0],
+      false,
+      getLocalPianoSynthOptions()
+    );
     setupDurationControl(instance);
     setupTempoControl(instance);
     instance.synthControl = synthControl;

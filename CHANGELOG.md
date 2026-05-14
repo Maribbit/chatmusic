@@ -16,6 +16,7 @@ This project follows a lightweight [Keep a Changelog](https://keepachangelog.com
 - Tempo menu BPM readout based on the rendered ABC tune and current playback speed.
 - Total playback duration display next to the audio progress clock.
 - SVG score image export from the rendered score header.
+- Bundled local piano soundfont samples for default playback without remote soundfont requests.
 - Bounded embedded score scrolling for long tunes while keeping fullscreen controls visible.
 - Source code collapse controls with configurable default visibility.
 - Changelog and version consistency checks for release preparation.
@@ -24,6 +25,7 @@ This project follows a lightweight [Keep a Changelog](https://keepachangelog.com
 
 - Rendered scores use isolated theme styles inside the Shadow DOM.
 - Rendered score controls use a compact header with fullscreen and tempo controls.
+- Playback now defaults to a local piano soundfont and no longer needs the remote soundfont host permission.
 
 ## [0.1.0] - 2026-05-13
 

@@ -11,6 +11,9 @@ The project is currently an MVP moving toward an open-source, Chrome Web Store r
 - Falls back to content detection using required ABC headers.
 - Renders sheet music with abcjs.
 - Provides playback controls when browser audio is available.
+- Uses bundled piano soundfont samples for default playback without remote soundfont requests.
+- Highlights playback notes and shows an 88-key piano keyboard visualization.
+- Offers theme controls, fullscreen viewing, source collapse, tempo display, duration display, and SVG score export.
 
 ## Requirements
 
@@ -82,9 +85,9 @@ docs/             Project process and release documentation
 
 ## Privacy and Permissions
 
-ChatMusic scans page content locally in the browser to find ABC notation. It does not send page text to a project-owned server. See [PRIVACY.md](PRIVACY.md) for details.
+ChatMusic scans page content locally in the browser to find ABC notation. It does not send page text to a project-owned server. Default playback uses bundled piano soundfont samples instead of requesting remote soundfont files. See [PRIVACY.md](PRIVACY.md) for details.
 
-The extension currently uses abcjs soundfont loading for playback. Before public release, verify the configured soundfont host and permissions in [manifest.json](manifest.json).
+Bundled soundfont attribution is documented in [public/THIRD_PARTY_NOTICES.txt](public/THIRD_PARTY_NOTICES.txt).
 
 ## Contributing
 

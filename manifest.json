@@ -9,7 +9,12 @@
     "128": "icons/icon128.png"
   },
   "permissions": ["storage", "activeTab"],
-  "host_permissions": ["*://paulrosen.github.io/*"],
+  "web_accessible_resources": [
+    {
+      "resources": ["soundfonts/FluidR3_GM/acoustic_grand_piano-mp3/*.mp3"],
+      "matches": ["<all_urls>"]
+    }
+  ],
   "background": {
     "service_worker": "src/background/service-worker.ts"
   },

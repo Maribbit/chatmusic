@@ -12,11 +12,13 @@ The extension may use Chrome extension storage for local preferences such as whe
 
 ## Network Requests
 
-Playback uses abcjs soundfont assets. The browser may request soundfont files from the configured soundfont host when playback is initialized. Before release, verify the selected soundfont host and document it in the Chrome Web Store listing.
+Default playback uses bundled piano soundfont samples packaged with the extension. It does not request remote soundfont files when audio playback is initialized.
 
 ## Permissions
 
 Permissions and host permissions are defined in [manifest.json](manifest.json). Keep them minimal and review any change for privacy impact.
+
+The extension exposes bundled soundfont audio files as web-accessible extension resources so the content script can load them for local playback.
 
 ## Contact
 
