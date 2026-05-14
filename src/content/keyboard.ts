@@ -16,6 +16,9 @@ const FULL_KEYBOARD_END_PITCH = 108;
 const MIDDLE_C_PITCH = 60;
 const WHITE_KEY_COUNT = 52;
 const MIN_WHITE_KEY_WIDTH = 20;
+const MIN_WHITE_KEY_HEIGHT = 52;
+const MAX_WHITE_KEY_HEIGHT = 96;
+const WHITE_KEY_HEIGHT_RATIO = 3;
 const KEYBOARD_HORIZONTAL_PADDING = 16;
 
 export function createKeyboardController(
@@ -69,14 +72,27 @@ export function createKeyboardController(
       availableWidth / WHITE_KEY_COUNT
     );
     const blackKeyWidth = whiteKeyWidth * 0.6;
+    const whiteKeyHeight = Math.min(
+      MAX_WHITE_KEY_HEIGHT,
+      Math.max(MIN_WHITE_KEY_HEIGHT, whiteKeyWidth * WHITE_KEY_HEIGHT_RATIO)
+    );
+    const blackKeyHeight = whiteKeyHeight * 0.62;
 
     keyboardElement.style.setProperty(
       "--chatmusic-white-key-width",
       `${whiteKeyWidth}px`
     );
     keyboardElement.style.setProperty(
+      "--chatmusic-white-key-height",
+      `${whiteKeyHeight}px`
+    );
+    keyboardElement.style.setProperty(
       "--chatmusic-black-key-width",
       `${blackKeyWidth}px`
+    );
+    keyboardElement.style.setProperty(
+      "--chatmusic-black-key-height",
+      `${blackKeyHeight}px`
     );
     keyboardElement.style.setProperty(
       "--chatmusic-black-key-offset",

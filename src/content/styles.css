@@ -276,12 +276,14 @@
 
 .chatmusic-keyboard {
   --chatmusic-white-key-width: 20px;
+  --chatmusic-white-key-height: 52px;
   --chatmusic-black-key-width: 12px;
+  --chatmusic-black-key-height: 32px;
   --chatmusic-black-key-offset: -6px;
   display: flex;
   align-items: flex-start;
   gap: 0;
-  min-height: 64px;
+  min-height: calc(var(--chatmusic-white-key-height) + 12px);
   margin-top: 10px;
   padding: 6px 8px;
   overflow-x: auto;
@@ -294,7 +296,7 @@
 }
 
 :host(:fullscreen) .chatmusic-keyboard {
-  min-height: 84px;
+  min-height: calc(var(--chatmusic-white-key-height) + 12px);
 }
 
 .chatmusic-piano-key {
@@ -321,7 +323,7 @@
 .chatmusic-piano-key-white {
   z-index: 1;
   width: var(--chatmusic-white-key-width);
-  height: 52px;
+  height: var(--chatmusic-white-key-height);
   border: 1px solid var(--chatmusic-audio-border);
   border-left-width: 0;
   background: var(--chatmusic-key-white-bg);
@@ -335,7 +337,7 @@
 .chatmusic-piano-key-black {
   z-index: 2;
   width: var(--chatmusic-black-key-width);
-  height: 32px;
+  height: var(--chatmusic-black-key-height);
   margin: 0 var(--chatmusic-black-key-offset);
   border: 0;
   background: var(--chatmusic-key-black-bg);
