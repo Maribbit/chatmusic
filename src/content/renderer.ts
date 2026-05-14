@@ -13,6 +13,14 @@ import {
   type KeyboardVisibility,
   type ThemeMode,
 } from "../shared/settings";
+import {
+  formatBpm,
+  getBpmFromMillisecondsPerMeasure,
+  getEffectiveBpm,
+  getTuneBaseBpm,
+  parseWarpPercent,
+  type TempoTune,
+} from "./tempo";
 import { resolveTheme } from "./theme";
 
 export interface RenderInstance {
@@ -23,6 +31,7 @@ export interface RenderInstance {
   audioElement: HTMLElement;
   tempoMenuElement: HTMLElement;
   tempoInputElement: HTMLInputElement;
+  tempoBpmElement: HTMLElement;
   codeToggleButton: HTMLButtonElement;
   preElement: Element;
   preElementOriginalDisplay: string | null;
@@ -49,6 +58,7 @@ interface TimingEvent {
   milliseconds: number;
   elements?: unknown[];
   midiPitches?: MidiPitch[];
+  millisecondsPerMeasure?: number;
   startChar?: number | null;
   endChar?: number | null;
   startCharArray?: Array<number | null>;
@@ -79,6 +89,7 @@ interface RenderElements {
   audioElement: HTMLElement;
   tempoMenuElement: HTMLElement;
   tempoInputElement: HTMLInputElement;
+  tempoBpmElement: HTMLElement;
   codeToggleButton: HTMLButtonElement;
   cleanup: () => void;
 }
@@ -116,25 +127,43 @@ function createContainer(
       <span class="chatmusic-label">ChatMusic</span>
       <div class="chatmusic-header-actions">
         <details class="chatmusic-tempo-menu" hidden>
-          <summary class="chatmusic-tempo-button" title="Tempo" aria-label="Tempo">♩</summary>
+          <summary class="chatmusic-tempo-button" title="Tempo" aria-label="Tempo">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M7 21L9.6 4.2A2 2 0 0 1 11.5 2h1A2 2 0 0 1 14.4 4.2L17 21" />
+              <path d="M5 21h14" />
+              <path d="M9 13v-1 M15 13v-1" />
+              <path d="M12 21V8" />
+              <circle cx="12" cy="13.5" r="1.5" fill="currentColor" stroke="none" />
+            </svg>
+          </summary>
           <div class="chatmusic-tempo-panel">
+            <div class="chatmusic-tempo-readout" aria-live="polite">
+              <span class="chatmusic-tempo-bpm-value">--</span>
+              <span class="chatmusic-tempo-unit">BPM</span>
+            </div>
             <label class="chatmusic-tempo-field">
               <input class="chatmusic-tempo-input" type="number" min="1" max="300" value="100" aria-label="Playback speed">
               <span>%</span>
             </label>
           </div>
         </details>
-        <button class="chatmusic-fullscreen-button" type="button" title="Enter fullscreen" aria-label="Enter fullscreen" aria-pressed="false">⛶</button>
-        <button class="chatmusic-keyboard-toggle-button" type="button" title="Hide keyboard" aria-label="Hide keyboard" aria-pressed="true">
-          <span class="chatmusic-keyboard-icon" aria-hidden="true">
-            <span class="chatmusic-keyboard-icon-white"></span>
-            <span class="chatmusic-keyboard-icon-white"></span>
-            <span class="chatmusic-keyboard-icon-white"></span>
-            <span class="chatmusic-keyboard-icon-black"></span>
-            <span class="chatmusic-keyboard-icon-black"></span>
-          </span>
+        <button class="chatmusic-fullscreen-button" type="button" title="Enter fullscreen" aria-label="Enter fullscreen" aria-pressed="false">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M8 3H5a2 2 0 0 0-2 2v3"/><path d="M21 8V5a2 2 0 0 0-2-2h-3"/><path d="M3 16v3a2 2 0 0 0 2 2h3"/><path d="M16 21h3a2 2 0 0 0 2-2v-3"/>
+          </svg>
         </button>
-        <button class="chatmusic-code-toggle-button" type="button" title="Hide source code" aria-label="Hide source code" aria-pressed="true">&lt;/&gt;</button>
+        <button class="chatmusic-keyboard-toggle-button" type="button" title="Hide keyboard" aria-label="Hide keyboard" aria-pressed="true">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M4 6h16a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2z"/>
+            <path d="M8 6v8 M12 6v8 M16 6v8"/>
+            <path d="M6 14h12"/>
+          </svg>
+        </button>
+        <button class="chatmusic-code-toggle-button" type="button" title="Hide source code" aria-label="Hide source code" aria-pressed="true">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="m18 16 4-4-4-4"/><path d="m6 8-4 4 4 4"/><path d="m14.5 4-5 16"/>
+          </svg>
+        </button>
       </div>
     </div>
     <div class="chatmusic-score"></div>
@@ -168,6 +197,9 @@ function createContainer(
     tempoInputElement: container.querySelector(
       ".chatmusic-tempo-input"
     ) as HTMLInputElement,
+    tempoBpmElement: container.querySelector(
+      ".chatmusic-tempo-bpm-value"
+    ) as HTMLElement,
     codeToggleButton: container.querySelector(
       ".chatmusic-code-toggle-button"
     ) as HTMLButtonElement,
@@ -236,6 +268,8 @@ async function initSynth(instance: RenderInstance): Promise<void> {
 
   const audioEl = instance.audioElement;
   instance.tempoMenuElement.hidden = true;
+  instance.tempoBpmElement.textContent = "--";
+  instance.tempoInputElement.oninput = null;
   instance.tempoInputElement.onchange = null;
 
   if (!abcjs.synth.supportsAudio()) {
@@ -274,6 +308,7 @@ function highlightTimingEvent(
   instance: RenderInstance,
   event: TimingEvent
 ): void {
+  updateTempoBpmDisplay(instance, event);
   clearPlaybackHighlight(instance);
 
   const elements = flattenTimingElements(event.elements);
@@ -547,11 +582,45 @@ function setupTempoControl(instance: RenderInstance): void {
   instance.tempoInputElement.value = nativeTempoInput.value;
   instance.tempoInputElement.min = nativeTempoInput.min;
   instance.tempoInputElement.max = nativeTempoInput.max;
-  instance.tempoInputElement.onchange = () => {
+  const syncTempo = () => {
+    if (parseWarpPercent(instance.tempoInputElement.value) === null) {
+      updateTempoBpmDisplay(instance);
+      return;
+    }
+
     nativeTempoInput.value = instance.tempoInputElement.value;
     nativeTempoInput.dispatchEvent(new Event("change", { bubbles: true }));
+    updateTempoBpmDisplay(instance);
   };
+  instance.tempoInputElement.oninput = syncTempo;
+  instance.tempoInputElement.onchange = syncTempo;
+  updateTempoBpmDisplay(instance);
   instance.tempoMenuElement.hidden = false;
+}
+
+function updateTempoBpmDisplay(
+  instance: RenderInstance,
+  event?: TimingEvent
+): void {
+  const tune = instance.visualObj?.[0] as TempoTune | undefined;
+  const eventBpm = getBpmFromMillisecondsPerMeasure(
+    tune,
+    event?.millisecondsPerMeasure
+  );
+  const baseBpm = eventBpm ?? getTuneBaseBpm(tune);
+  const effectiveBpm = eventBpm ?? getEffectiveBpm(
+    baseBpm,
+    parseWarpPercent(instance.tempoInputElement.value)
+  );
+  const bpmText = formatBpm(effectiveBpm);
+  const button = instance.tempoMenuElement.querySelector(
+    ".chatmusic-tempo-button"
+  );
+  const label = effectiveBpm ? `Tempo: ${bpmText} BPM` : "Tempo";
+
+  instance.tempoBpmElement.textContent = bpmText;
+  button?.setAttribute("title", label);
+  button?.setAttribute("aria-label", label);
 }
 
 /**
@@ -594,6 +663,7 @@ export function renderAbc(
     audioElement: elements.audioElement,
     tempoMenuElement: elements.tempoMenuElement,
     tempoInputElement: elements.tempoInputElement,
+    tempoBpmElement: elements.tempoBpmElement,
     codeToggleButton: elements.codeToggleButton,
     preElement,
     preElementOriginalDisplay: null,

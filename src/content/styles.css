@@ -123,6 +123,8 @@
 
 .chatmusic-tempo-menu {
   position: relative;
+  display: flex;
+  align-items: center;
 }
 
 .chatmusic-tempo-menu[hidden] {
@@ -139,8 +141,8 @@
   align-items: center;
   justify-content: center;
   flex: 0 0 auto;
-  width: 24px;
-  height: 24px;
+  width: 28px;
+  height: 28px;
   border-radius: 4px;
   color: var(--chatmusic-muted-text);
   cursor: pointer;
@@ -148,58 +150,15 @@
   font-size: 16px;
   line-height: 1;
   user-select: none;
+  transition: background-color 150ms ease, color 150ms ease;
 }
 
 .chatmusic-tempo-button::-webkit-details-marker {
   display: none;
 }
 
-.chatmusic-code-toggle-button {
-  width: 34px;
-  font-size: 11px;
-  font-weight: 600;
-}
-
 .chatmusic-keyboard-toggle-button[hidden] {
   display: none;
-}
-
-.chatmusic-keyboard-icon {
-  position: relative;
-  display: grid;
-  grid-template-columns: repeat(3, 5px);
-  width: 17px;
-  height: 15px;
-  color: currentColor;
-}
-
-.chatmusic-keyboard-icon-white {
-  display: block;
-  box-sizing: border-box;
-  height: 15px;
-  border: 1.5px solid currentColor;
-  background: transparent;
-}
-
-.chatmusic-keyboard-icon-white + .chatmusic-keyboard-icon-white {
-  border-left-width: 0;
-}
-
-.chatmusic-keyboard-icon-black {
-  position: absolute;
-  top: 1.5px;
-  width: 4px;
-  height: 8px;
-  border-radius: 0 0 1px 1px;
-  background: currentColor;
-}
-
-.chatmusic-keyboard-icon-black:nth-of-type(4) {
-  left: 4px;
-}
-
-.chatmusic-keyboard-icon-black:nth-of-type(5) {
-  left: 9px;
 }
 
 :host(:fullscreen) .chatmusic-code-toggle-button {
@@ -228,13 +187,41 @@
 
 .chatmusic-tempo-panel {
   position: absolute;
-  top: calc(100% + 6px);
-  right: 0;
-  z-index: 1;
+  top: 50%;
+  right: calc(100% + 8px);
+  transform: translateY(-50%);
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  gap: 8px;
   padding: 8px;
   border-radius: 6px;
   background: var(--chatmusic-audio-bg);
-  box-shadow: 0 8px 24px rgb(0 0 0 / 20%);
+  border: 1px solid var(--chatmusic-audio-border);
+  box-shadow: 0 4px 16px rgb(0 0 0 / 20%);
+  white-space: nowrap;
+}
+
+.chatmusic-tempo-readout {
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+  color: var(--chatmusic-text);
+  font-family: inherit;
+  font-size: 11px;
+  line-height: 1;
+}
+
+.chatmusic-tempo-bpm-value {
+  font-size: inherit;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.chatmusic-tempo-unit {
+  color: var(--chatmusic-muted-text);
+  font-size: inherit;
+  font-weight: 600;
 }
 
 .chatmusic-audio .abcjs-inline-audio .abcjs-tempo-wrapper {
@@ -244,6 +231,7 @@
 .chatmusic-tempo-field {
   display: flex;
   align-items: center;
+  justify-content: flex-end;
   gap: 4px;
   color: var(--chatmusic-audio-control);
   font-family: inherit;

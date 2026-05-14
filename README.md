@@ -30,7 +30,14 @@ npm install
 npm run dev
 ```
 
-Then load the generated extension output as an unpacked extension in Chrome. If content script HMR behaves inconsistently, reload the extension and the target page from `chrome://extensions`.
+Keep the Vite dev server running, then load the generated `dist/` directory as an unpacked extension in Chrome:
+
+1. Open `chrome://extensions`.
+2. Enable Developer mode.
+3. Click **Load unpacked** and select this project's `dist/` directory.
+4. Open or refresh a target web page and test the extension there.
+
+The CRX/Vite plugin writes a development manifest into `dist/` and injects HMR loaders for the background service worker, popup, and content script. Popup and background changes are usually picked up by the dev server automatically. Content script updates may still need the target page to be refreshed; if the extension context becomes stale, reload the extension from `chrome://extensions` and then refresh the target page.
 
 For a production-like build:
 

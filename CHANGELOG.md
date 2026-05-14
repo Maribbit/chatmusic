@@ -13,6 +13,7 @@ This project follows a lightweight [Keep a Changelog](https://keepachangelog.com
 - Fullscreen control for enlarging rendered scores during practice.
 - Playback note highlighting and note click seeking in rendered scores.
 - Playback piano keyboard visualization that highlights current MIDI pitches, with configurable default visibility.
+- Tempo menu BPM readout based on the rendered ABC tune and current playback speed.
 - Source code collapse controls with configurable default visibility.
 - Changelog and version consistency checks for release preparation.
 
