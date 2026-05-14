@@ -14,24 +14,19 @@ import {
   type ThemeMode,
 } from "../shared/settings";
 import {
-  formatBpm,
-  getBpmFromMillisecondsPerMeasure,
-  getEffectiveBpm,
-  getTuneBaseBpm,
-  parseWarpPercent,
-  type TempoTune,
-} from "./tempo";
-import { resolveTheme } from "./theme";
+  createKeyboardController,
+  type KeyboardController,
+  type MidiPitch,
+} from "./keyboard";
+import { createTempoControl, type TempoControl } from "./tempo-control";
+import { applyRenderViewTheme, createRenderView } from "./view";
 
 export interface RenderInstance {
   container: HTMLElement;
   scoreElement: HTMLElement;
-  keyboardElement: HTMLElement;
-  keyboardToggleButton: HTMLButtonElement;
+  keyboard: KeyboardController;
   audioElement: HTMLElement;
-  tempoMenuElement: HTMLElement;
-  tempoInputElement: HTMLInputElement;
-  tempoBpmElement: HTMLElement;
+  tempoControl: TempoControl;
   codeToggleButton: HTMLButtonElement;
   preElement: Element;
   preElementOriginalDisplay: string | null;
@@ -40,11 +35,7 @@ export interface RenderInstance {
   themeMode: ThemeMode;
   visualObj: abcjs.TuneObject[] | null;
   synthControl: abcjs.SynthObjectController | null;
-  isKeyboardVisible: boolean;
-  keyboardFocusStartPitch: number;
-  keyboardFocusEndPitch: number;
   activePlaybackElements: Element[];
-  activeKeyboardKeys: HTMLElement[];
   cleanup: () => void;
 }
 
@@ -65,10 +56,6 @@ interface TimingEvent {
   endCharArray?: Array<number | null>;
 }
 
-interface MidiPitch {
-  pitch?: number;
-}
-
 type TimedTuneObject = Omit<abcjs.TuneObject, "setTiming"> & {
   noteTimings?: TimingEvent[];
   setTiming?: (qpm?: number, measuresOfDelay?: number) => TimingEvent[];
@@ -81,183 +68,8 @@ interface SeekableSynthControl extends abcjs.SynthObjectController {
   ) => Promise<unknown>;
 }
 
-interface RenderElements {
-  container: HTMLElement;
-  scoreElement: HTMLElement;
-  keyboardElement: HTMLElement;
-  keyboardToggleButton: HTMLButtonElement;
-  audioElement: HTMLElement;
-  tempoMenuElement: HTMLElement;
-  tempoInputElement: HTMLInputElement;
-  tempoBpmElement: HTMLElement;
-  codeToggleButton: HTMLButtonElement;
-  cleanup: () => void;
-}
-
 const instances = new Map<Element, RenderInstance>();
 const shadowStyles = `${abcjsAudioStyles}\n${chatmusicStyles}`;
-const FULL_KEYBOARD_START_PITCH = 21;
-const FULL_KEYBOARD_END_PITCH = 108;
-const MIDDLE_C_PITCH = 60;
-const WHITE_KEY_COUNT = 52;
-const MIN_WHITE_KEY_WIDTH = 20;
-const KEYBOARD_HORIZONTAL_PADDING = 16;
-
-/**
- * Create the ChatMusic container with score area and audio area.
- * Uses abcjs SynthController's built-in UI for playback (has progress, warp, etc.)
- */
-function createContainer(
-  preElement: Element,
-  themeMode: ThemeMode
-): RenderElements {
-  const host = document.createElement("div");
-  host.className = "chatmusic-host";
-  applyHostTheme(host, preElement, themeMode);
-
-  const shadowRoot = host.attachShadow({ mode: "open" });
-  const style = document.createElement("style");
-  style.textContent = shadowStyles;
-
-  const container = document.createElement("div");
-  container.className = "chatmusic-container";
-
-  container.innerHTML = `
-    <div class="chatmusic-header">
-      <span class="chatmusic-label">ChatMusic</span>
-      <div class="chatmusic-header-actions">
-        <details class="chatmusic-tempo-menu" hidden>
-          <summary class="chatmusic-tempo-button" title="Tempo" aria-label="Tempo">
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M7 21L9.6 4.2A2 2 0 0 1 11.5 2h1A2 2 0 0 1 14.4 4.2L17 21" />
-              <path d="M5 21h14" />
-              <path d="M9 13v-1 M15 13v-1" />
-              <path d="M12 21V8" />
-              <circle cx="12" cy="13.5" r="1.5" fill="currentColor" stroke="none" />
-            </svg>
-          </summary>
-          <div class="chatmusic-tempo-panel">
-            <div class="chatmusic-tempo-readout" aria-live="polite">
-              <span class="chatmusic-tempo-bpm-value">--</span>
-              <span class="chatmusic-tempo-unit">BPM</span>
-            </div>
-            <label class="chatmusic-tempo-field">
-              <input class="chatmusic-tempo-input" type="number" min="1" max="300" value="100" aria-label="Playback speed">
-              <span>%</span>
-            </label>
-          </div>
-        </details>
-        <button class="chatmusic-fullscreen-button" type="button" title="Enter fullscreen" aria-label="Enter fullscreen" aria-pressed="false">
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M8 3H5a2 2 0 0 0-2 2v3"/><path d="M21 8V5a2 2 0 0 0-2-2h-3"/><path d="M3 16v3a2 2 0 0 0 2 2h3"/><path d="M16 21h3a2 2 0 0 0 2-2v-3"/>
-          </svg>
-        </button>
-        <button class="chatmusic-keyboard-toggle-button" type="button" title="Hide keyboard" aria-label="Hide keyboard" aria-pressed="true">
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M4 6h16a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2z"/>
-            <path d="M8 6v8 M12 6v8 M16 6v8"/>
-            <path d="M6 14h12"/>
-          </svg>
-        </button>
-        <button class="chatmusic-code-toggle-button" type="button" title="Hide source code" aria-label="Hide source code" aria-pressed="true">
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="m18 16 4-4-4-4"/><path d="m6 8-4 4 4 4"/><path d="m14.5 4-5 16"/>
-          </svg>
-        </button>
-      </div>
-    </div>
-    <div class="chatmusic-score"></div>
-    <div class="chatmusic-keyboard"></div>
-    <div class="chatmusic-audio"></div>
-  `;
-
-  const fullscreenButton = container.querySelector(
-    ".chatmusic-fullscreen-button"
-  ) as HTMLButtonElement;
-  const cleanup = setupFullscreenButton(host, fullscreenButton);
-
-  shadowRoot.append(style, container);
-
-  // Insert after the <pre> element
-  preElement.parentNode?.insertBefore(host, preElement.nextSibling);
-
-  return {
-    container: host,
-    scoreElement: container.querySelector(".chatmusic-score") as HTMLElement,
-    keyboardElement: container.querySelector(
-      ".chatmusic-keyboard"
-    ) as HTMLElement,
-    keyboardToggleButton: container.querySelector(
-      ".chatmusic-keyboard-toggle-button"
-    ) as HTMLButtonElement,
-    audioElement: container.querySelector(".chatmusic-audio") as HTMLElement,
-    tempoMenuElement: container.querySelector(
-      ".chatmusic-tempo-menu"
-    ) as HTMLElement,
-    tempoInputElement: container.querySelector(
-      ".chatmusic-tempo-input"
-    ) as HTMLInputElement,
-    tempoBpmElement: container.querySelector(
-      ".chatmusic-tempo-bpm-value"
-    ) as HTMLElement,
-    codeToggleButton: container.querySelector(
-      ".chatmusic-code-toggle-button"
-    ) as HTMLButtonElement,
-    cleanup,
-  };
-}
-
-function setupFullscreenButton(
-  host: HTMLElement,
-  button: HTMLButtonElement
-): () => void {
-  if (!document.fullscreenEnabled || !host.requestFullscreen) {
-    button.hidden = true;
-    return () => {};
-  }
-
-  const updateButtonState = () => {
-    const isFullscreen = document.fullscreenElement === host;
-    const label = isFullscreen ? "Exit fullscreen" : "Enter fullscreen";
-
-    button.title = label;
-    button.setAttribute("aria-label", label);
-    button.setAttribute("aria-pressed", String(isFullscreen));
-  };
-
-  const toggleFullscreen = async () => {
-    try {
-      if (document.fullscreenElement === host) {
-        await document.exitFullscreen();
-      } else {
-        await host.requestFullscreen();
-      }
-    } catch (err) {
-      console.warn("[ChatMusic] Fullscreen toggle failed:", err);
-    }
-  };
-
-  button.addEventListener("click", toggleFullscreen);
-  document.addEventListener("fullscreenchange", updateButtonState);
-  updateButtonState();
-
-  return () => {
-    button.removeEventListener("click", toggleFullscreen);
-    document.removeEventListener("fullscreenchange", updateButtonState);
-  };
-}
-
-function applyHostTheme(
-  host: HTMLElement,
-  preElement: Element,
-  themeMode: ThemeMode
-): void {
-  const resolvedTheme = resolveTheme(preElement, themeMode);
-
-  host.dataset.chatmusicTheme = resolvedTheme;
-  host.dataset.chatmusicThemeMode = themeMode;
-  host.style.colorScheme = resolvedTheme;
-}
 
 /**
  * Initialize the abcjs SynthController for playback.
@@ -267,10 +79,7 @@ async function initSynth(instance: RenderInstance): Promise<void> {
   if (!instance.visualObj || instance.visualObj.length === 0) return;
 
   const audioEl = instance.audioElement;
-  instance.tempoMenuElement.hidden = true;
-  instance.tempoBpmElement.textContent = "--";
-  instance.tempoInputElement.oninput = null;
-  instance.tempoInputElement.onchange = null;
+  instance.tempoControl.reset();
 
   if (!abcjs.synth.supportsAudio()) {
     audioEl.innerHTML = '<p class="chatmusic-no-audio">Audio playback not supported in this browser.</p>';
@@ -308,7 +117,7 @@ function highlightTimingEvent(
   instance: RenderInstance,
   event: TimingEvent
 ): void {
-  updateTempoBpmDisplay(instance, event);
+  instance.tempoControl.update(event);
   clearPlaybackHighlight(instance);
 
   const elements = flattenTimingElements(event.elements);
@@ -324,141 +133,19 @@ function clearPlaybackHighlight(instance: RenderInstance): void {
   for (const element of instance.activePlaybackElements) {
     element.classList.remove("chatmusic-note-playing");
   }
-  for (const key of instance.activeKeyboardKeys) {
-    key.classList.remove("chatmusic-key-active");
-  }
+  instance.keyboard.clearActiveKeys();
   instance.activePlaybackElements = [];
-  instance.activeKeyboardKeys = [];
 }
 
 function setupKeyboard(instance: RenderInstance): void {
-  const pitches = getTuneMidiPitches(instance);
-  const tunePitches = new Set(pitches);
-  instance.keyboardElement.replaceChildren();
-  instance.activeKeyboardKeys = [];
-  instance.keyboardFocusStartPitch = pitches[0] ?? MIDDLE_C_PITCH;
-  instance.keyboardFocusEndPitch = pitches[pitches.length - 1] ?? MIDDLE_C_PITCH;
-
-  // Keep the piano geography stable; tune pitches only affect markers and scroll.
-  for (
-    let pitch = FULL_KEYBOARD_START_PITCH;
-    pitch <= FULL_KEYBOARD_END_PITCH;
-    pitch++
-  ) {
-    const key = document.createElement("div");
-    const isBlack = isBlackPianoKey(pitch);
-
-    key.className = `chatmusic-piano-key ${
-      isBlack ? "chatmusic-piano-key-black" : "chatmusic-piano-key-white"
-    }`;
-    if (tunePitches.has(pitch)) key.classList.add("chatmusic-key-in-tune");
-    if (pitch === MIDDLE_C_PITCH) {
-      key.classList.add("chatmusic-key-middle-c");
-    }
-    key.dataset.pitch = String(pitch);
-    key.dataset.note = getMidiNoteName(pitch);
-    key.title = getMidiNoteName(pitch);
-    instance.keyboardElement.append(key);
-  }
-
-  syncKeyboardKeySize(instance);
-  setKeyboardVisible(instance, instance.isKeyboardVisible);
-}
-
-function setKeyboardVisible(
-  instance: RenderInstance,
-  isKeyboardVisible: boolean
-): void {
-  instance.isKeyboardVisible = isKeyboardVisible;
-  instance.keyboardElement.hidden = !isKeyboardVisible;
-  updateKeyboardToggleButton(instance);
-  if (isKeyboardVisible) {
-    syncKeyboardKeySize(instance);
-    scrollKeyboardToFocusRange(instance);
-  }
-}
-
-function syncKeyboardKeySize(instance: RenderInstance): void {
-  const availableWidth = Math.max(
-    0,
-    instance.keyboardElement.clientWidth - KEYBOARD_HORIZONTAL_PADDING
-  );
-  const whiteKeyWidth = Math.max(
-    MIN_WHITE_KEY_WIDTH,
-    availableWidth / WHITE_KEY_COUNT
-  );
-  const blackKeyWidth = whiteKeyWidth * 0.6;
-
-  instance.keyboardElement.style.setProperty(
-    "--chatmusic-white-key-width",
-    `${whiteKeyWidth}px`
-  );
-  instance.keyboardElement.style.setProperty(
-    "--chatmusic-black-key-width",
-    `${blackKeyWidth}px`
-  );
-  instance.keyboardElement.style.setProperty(
-    "--chatmusic-black-key-offset",
-    `${-blackKeyWidth / 2}px`
-  );
-}
-
-function updateKeyboardToggleButton(instance: RenderInstance): void {
-  const label = instance.isKeyboardVisible ? "Hide keyboard" : "Show keyboard";
-
-  instance.keyboardToggleButton.title = label;
-  instance.keyboardToggleButton.setAttribute("aria-label", label);
-  instance.keyboardToggleButton.setAttribute(
-    "aria-pressed",
-    String(instance.isKeyboardVisible)
-  );
-}
-
-function scrollKeyboardToFocusRange(instance: RenderInstance): void {
-  const startKey = instance.keyboardElement.querySelector(
-    `[data-pitch="${instance.keyboardFocusStartPitch}"]`
-  );
-  const endKey = instance.keyboardElement.querySelector(
-    `[data-pitch="${instance.keyboardFocusEndPitch}"]`
-  );
-  if (!(startKey instanceof HTMLElement) || !(endKey instanceof HTMLElement)) {
-    return;
-  }
-
-  requestAnimationFrame(() => {
-    if (instance.keyboardElement.hidden) return;
-
-    const start = startKey.offsetLeft;
-    const end = endKey.offsetLeft + endKey.offsetWidth;
-    const center = (start + end) / 2;
-    const scrollLeft = Math.max(
-      0,
-      center - instance.keyboardElement.clientWidth / 2
-    );
-
-    instance.keyboardElement.scrollTo({ left: scrollLeft });
-  });
+  instance.keyboard.setup(getTuneMidiPitches(instance));
 }
 
 function highlightKeyboardPitches(
   instance: RenderInstance,
   midiPitches: MidiPitch[]
 ): void {
-  const activeKeys: HTMLElement[] = [];
-
-  for (const midiPitch of midiPitches) {
-    if (midiPitch.pitch === undefined) continue;
-
-    const key = instance.keyboardElement.querySelector(
-      `[data-pitch="${midiPitch.pitch}"]`
-    );
-    if (key instanceof HTMLElement) {
-      key.classList.add("chatmusic-key-active");
-      activeKeys.push(key);
-    }
-  }
-
-  instance.activeKeyboardKeys = activeKeys;
+  instance.keyboard.highlightPitches(midiPitches);
 }
 
 function getTuneMidiPitches(instance: RenderInstance): number[] {
@@ -471,17 +158,6 @@ function getTuneMidiPitches(instance: RenderInstance): number[] {
   }
 
   return [...pitches].sort((first, second) => first - second);
-}
-
-function isBlackPianoKey(pitch: number): boolean {
-  return [1, 3, 6, 8, 10].includes(pitch % 12);
-}
-
-function getMidiNoteName(pitch: number): string {
-  const noteNames = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
-  const octave = Math.floor(pitch / 12) - 1;
-
-  return `${noteNames[pitch % 12]}${octave}`;
 }
 
 function flattenTimingElements(elements: unknown[] | undefined): Element[] {
@@ -579,48 +255,7 @@ function setupTempoControl(instance: RenderInstance): void {
 
   if (!nativeTempoInput) return;
 
-  instance.tempoInputElement.value = nativeTempoInput.value;
-  instance.tempoInputElement.min = nativeTempoInput.min;
-  instance.tempoInputElement.max = nativeTempoInput.max;
-  const syncTempo = () => {
-    if (parseWarpPercent(instance.tempoInputElement.value) === null) {
-      updateTempoBpmDisplay(instance);
-      return;
-    }
-
-    nativeTempoInput.value = instance.tempoInputElement.value;
-    nativeTempoInput.dispatchEvent(new Event("change", { bubbles: true }));
-    updateTempoBpmDisplay(instance);
-  };
-  instance.tempoInputElement.oninput = syncTempo;
-  instance.tempoInputElement.onchange = syncTempo;
-  updateTempoBpmDisplay(instance);
-  instance.tempoMenuElement.hidden = false;
-}
-
-function updateTempoBpmDisplay(
-  instance: RenderInstance,
-  event?: TimingEvent
-): void {
-  const tune = instance.visualObj?.[0] as TempoTune | undefined;
-  const eventBpm = getBpmFromMillisecondsPerMeasure(
-    tune,
-    event?.millisecondsPerMeasure
-  );
-  const baseBpm = eventBpm ?? getTuneBaseBpm(tune);
-  const effectiveBpm = eventBpm ?? getEffectiveBpm(
-    baseBpm,
-    parseWarpPercent(instance.tempoInputElement.value)
-  );
-  const bpmText = formatBpm(effectiveBpm);
-  const button = instance.tempoMenuElement.querySelector(
-    ".chatmusic-tempo-button"
-  );
-  const label = effectiveBpm ? `Tempo: ${bpmText} BPM` : "Tempo";
-
-  instance.tempoBpmElement.textContent = bpmText;
-  button?.setAttribute("title", label);
-  button?.setAttribute("aria-label", label);
+  instance.tempoControl.connect(nativeTempoInput, instance.visualObj?.[0]);
 }
 
 /**
@@ -643,7 +278,17 @@ export function renderAbc(
     return updateRender(existing, abcText, themeMode);
   }
 
-  const elements = createContainer(preElement, themeMode);
+  const elements = createRenderView(preElement, themeMode, shadowStyles);
+  const keyboard = createKeyboardController(
+    elements.keyboardElement,
+    elements.keyboardToggleButton,
+    keyboardVisibility === "visible"
+  );
+  const tempoControl = createTempoControl(
+    elements.tempoMenuElement,
+    elements.tempoInputElement,
+    elements.tempoBpmElement
+  );
 
   // Render sheet music SVG
   let instance: RenderInstance | null = null;
@@ -658,12 +303,9 @@ export function renderAbc(
   instance = {
     container: elements.container,
     scoreElement: elements.scoreElement,
-    keyboardElement: elements.keyboardElement,
-    keyboardToggleButton: elements.keyboardToggleButton,
+    keyboard,
     audioElement: elements.audioElement,
-    tempoMenuElement: elements.tempoMenuElement,
-    tempoInputElement: elements.tempoInputElement,
-    tempoBpmElement: elements.tempoBpmElement,
+    tempoControl,
     codeToggleButton: elements.codeToggleButton,
     preElement,
     preElementOriginalDisplay: null,
@@ -672,17 +314,14 @@ export function renderAbc(
     themeMode,
     visualObj,
     synthControl: null,
-    isKeyboardVisible: keyboardVisibility === "visible",
-    keyboardFocusStartPitch: MIDDLE_C_PITCH,
-    keyboardFocusEndPitch: MIDDLE_C_PITCH,
     activePlaybackElements: [],
-    activeKeyboardKeys: [],
-    cleanup: elements.cleanup,
+    cleanup: () => {
+      keyboard.dispose();
+      elements.cleanup();
+    },
   };
 
   setupCodeToggleButton(instance);
-  setupKeyboardToggleButton(instance);
-  setupKeyboardResizeObserver(instance);
   applyCodeBlockVisibility(instance, codeBlockVisibility);
   applyKeyboardVisibility(instance, keyboardVisibility);
   setupKeyboard(instance);
@@ -707,40 +346,11 @@ function setupCodeToggleButton(instance: RenderInstance): void {
   };
 }
 
-function setupKeyboardToggleButton(instance: RenderInstance): void {
-  const toggleKeyboard = () => {
-    setKeyboardVisible(instance, !instance.isKeyboardVisible);
-  };
-  const previousCleanup = instance.cleanup;
-
-  instance.keyboardToggleButton.addEventListener("click", toggleKeyboard);
-  instance.cleanup = () => {
-    instance.keyboardToggleButton.removeEventListener("click", toggleKeyboard);
-    previousCleanup();
-  };
-}
-
-function setupKeyboardResizeObserver(instance: RenderInstance): void {
-  if (typeof ResizeObserver === "undefined") return;
-
-  const observer = new ResizeObserver(() => {
-    syncKeyboardKeySize(instance);
-    if (instance.isKeyboardVisible) scrollKeyboardToFocusRange(instance);
-  });
-  const previousCleanup = instance.cleanup;
-
-  observer.observe(instance.keyboardElement);
-  instance.cleanup = () => {
-    observer.disconnect();
-    previousCleanup();
-  };
-}
-
 function applyKeyboardVisibility(
   instance: RenderInstance,
   keyboardVisibility: KeyboardVisibility
 ): void {
-  setKeyboardVisible(instance, keyboardVisibility === "visible");
+  instance.keyboard.setVisible(keyboardVisibility === "visible");
 }
 
 export function updateKeyboardVisibility(
@@ -832,7 +442,7 @@ function updateRender(
 
 function applyTheme(instance: RenderInstance, themeMode: ThemeMode): void {
   instance.themeMode = themeMode;
-  applyHostTheme(instance.container, instance.preElement, themeMode);
+  applyRenderViewTheme(instance.container, instance.preElement, themeMode);
 }
 
 export function updateRenderThemes(themeMode: ThemeMode): void {
