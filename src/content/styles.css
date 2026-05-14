@@ -133,6 +133,7 @@
 
 .chatmusic-tempo-button,
 .chatmusic-keyboard-toggle-button,
+.chatmusic-export-button,
 .chatmusic-code-toggle-button,
 .chatmusic-fullscreen-button {
   all: unset;
@@ -169,6 +170,7 @@
 .chatmusic-tempo-menu[open] .chatmusic-tempo-button,
 .chatmusic-keyboard-toggle-button:hover,
 .chatmusic-keyboard-toggle-button[aria-pressed="true"],
+.chatmusic-export-button:hover,
 .chatmusic-code-toggle-button:hover,
 .chatmusic-code-toggle-button[aria-pressed="true"],
 .chatmusic-fullscreen-button:hover,
@@ -179,6 +181,7 @@
 
 .chatmusic-tempo-button:focus-visible,
 .chatmusic-keyboard-toggle-button:focus-visible,
+.chatmusic-export-button:focus-visible,
 .chatmusic-code-toggle-button:focus-visible,
 .chatmusic-fullscreen-button:focus-visible {
   outline: 2px solid var(--chatmusic-audio-thumb);

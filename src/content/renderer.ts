@@ -20,6 +20,11 @@ import {
   type KeyboardController,
   type MidiPitch,
 } from "./keyboard";
+import {
+  downloadSvg,
+  getScoreSvg,
+  getSvgDownloadFilename,
+} from "./svg-export";
 import { createTempoControl, type TempoControl } from "./tempo-control";
 import { applyRenderViewTheme, createRenderView } from "./view";
 
@@ -30,6 +35,7 @@ export interface RenderInstance {
   audioElement: HTMLElement;
   tempoControl: TempoControl;
   durationControl: DurationControl;
+  exportButton: HTMLButtonElement;
   codeToggleButton: HTMLButtonElement;
   preElement: Element;
   preElementOriginalDisplay: string | null;
@@ -100,7 +106,7 @@ async function initSynth(instance: RenderInstance): Promise<void> {
     });
 
     await synthControl.setTune(instance.visualObj[0], false);
-  setupDurationControl(instance);
+    setupDurationControl(instance);
     setupTempoControl(instance);
     instance.synthControl = synthControl;
   } catch (err) {
@@ -321,6 +327,7 @@ export function renderAbc(
     audioElement: elements.audioElement,
     tempoControl,
     durationControl,
+    exportButton: elements.exportButton,
     codeToggleButton: elements.codeToggleButton,
     preElement,
     preElementOriginalDisplay: null,
@@ -337,6 +344,7 @@ export function renderAbc(
   };
 
   setupCodeToggleButton(instance);
+  setupExportButton(instance);
   applyCodeBlockVisibility(instance, codeBlockVisibility);
   applyKeyboardVisibility(instance, keyboardVisibility);
   setupKeyboard(instance);
@@ -346,6 +354,22 @@ export function renderAbc(
   initSynth(instance);
 
   return instance;
+}
+
+function setupExportButton(instance: RenderInstance): void {
+  const exportScore = () => {
+    const svg = getScoreSvg(instance.scoreElement);
+    if (!svg) return;
+
+    downloadSvg(svg, getSvgDownloadFilename(instance.abcText));
+  };
+  const previousCleanup = instance.cleanup;
+
+  instance.exportButton.addEventListener("click", exportScore);
+  instance.cleanup = () => {
+    instance.exportButton.removeEventListener("click", exportScore);
+    previousCleanup();
+  };
 }
 
 function setupCodeToggleButton(instance: RenderInstance): void {

@@ -10,6 +10,7 @@ export interface RenderViewElements {
   tempoMenuElement: HTMLElement;
   tempoInputElement: HTMLInputElement;
   tempoBpmElement: HTMLElement;
+  exportButton: HTMLButtonElement;
   codeToggleButton: HTMLButtonElement;
   cleanup: () => void;
 }
@@ -58,6 +59,9 @@ export function createRenderView(
     tempoBpmElement: container.querySelector(
       ".chatmusic-tempo-bpm-value"
     ) as HTMLElement,
+    exportButton: container.querySelector(
+      ".chatmusic-export-button"
+    ) as HTMLButtonElement,
     codeToggleButton: container.querySelector(
       ".chatmusic-code-toggle-button"
     ) as HTMLButtonElement,
@@ -103,6 +107,12 @@ function renderContainerMarkup(): string {
             </label>
           </div>
         </details>
+        <button class="chatmusic-export-button" type="button" title="Download score image" aria-label="Download score image">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M14.5 4h-5L8 7H5a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-1.5-3z"/>
+            <circle cx="12" cy="13" r="3"/>
+          </svg>
+        </button>
         <button class="chatmusic-fullscreen-button" type="button" title="Enter fullscreen" aria-label="Enter fullscreen" aria-pressed="false">
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <path d="M8 3H5a2 2 0 0 0-2 2v3"/><path d="M21 8V5a2 2 0 0 0-2-2h-3"/><path d="M3 16v3a2 2 0 0 0 2 2h3"/><path d="M16 21h3a2 2 0 0 0 2-2v-3"/>

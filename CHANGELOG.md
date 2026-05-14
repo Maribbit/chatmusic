@@ -15,6 +15,7 @@ This project follows a lightweight [Keep a Changelog](https://keepachangelog.com
 - Playback piano keyboard visualization that highlights current MIDI pitches, with configurable default visibility.
 - Tempo menu BPM readout based on the rendered ABC tune and current playback speed.
 - Total playback duration display next to the audio progress clock.
+- SVG score image export from the rendered score header.
 - Bounded embedded score scrolling for long tunes while keeping fullscreen controls visible.
 - Source code collapse controls with configurable default visibility.
 - Changelog and version consistency checks for release preparation.
