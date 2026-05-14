@@ -29,7 +29,7 @@ Load `dist/` as an unpacked extension in Chrome and manually verify:
 
 - ABC blocks are detected.
 - Scores render below matching code blocks.
-- Playback initializes and uses the expected soundfont host.
+- Playback initializes using bundled piano soundfont samples.
 - Popup settings still work.
 - No unexpected console errors appear in the content page, popup, or service worker.
 - [CHANGELOG.md](../CHANGELOG.md) describes the release in user-facing language.
@@ -41,7 +41,7 @@ Before upload, confirm:
 - Icons exist at all required sizes.
 - `manifest.json` permissions are minimal and justified.
 - [PRIVACY.md](../PRIVACY.md) matches the actual extension behavior.
-- The Chrome Web Store listing explains soundfont network requests.
+- Bundled soundfont attribution is included and matches [public/THIRD_PARTY_NOTICES.txt](../public/THIRD_PARTY_NOTICES.txt).
 - No private keys, `.env` files, local builds, or unrelated artifacts are included.
 
 ## 4. Package
