@@ -49,8 +49,7 @@ Before upload, confirm:
 Create the upload archive from the contents of `dist/`:
 
 ```sh
-cd dist
-zip -r ../chatmusic-vX.Y.Z.zip .
+npm run release:package
 ```
 
 The zip file is ignored by Git and should not be committed.

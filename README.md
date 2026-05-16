@@ -63,6 +63,7 @@ Then load the `dist/` directory as an unpacked extension.
 | `npm run typecheck` | Run TypeScript without emitting files. |
 | `npm run test` | Run unit tests once. |
 | `npm run test:watch` | Run unit tests in watch mode. |
+| `npm run release:package` | Build, validate, and package the Chrome extension zip for the current version. |
 | `npm run check` | Run the full local verification pipeline. |
 
 ## Project Structure
