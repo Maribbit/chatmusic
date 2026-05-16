@@ -11,6 +11,8 @@ export interface KeyboardController {
   dispose(): void;
 }
 
+export type KeyboardPitchHandler = (pitch: number) => void | Promise<void>;
+
 const FULL_KEYBOARD_START_PITCH = 21;
 const FULL_KEYBOARD_END_PITCH = 108;
 const MIDDLE_C_PITCH = 60;
@@ -20,16 +22,19 @@ const MIN_WHITE_KEY_HEIGHT = 52;
 const MAX_WHITE_KEY_HEIGHT = 96;
 const WHITE_KEY_HEIGHT_RATIO = 3;
 const KEYBOARD_HORIZONTAL_PADDING = 16;
+const AUDITION_HIGHLIGHT_MS = 220;
 
 export function createKeyboardController(
   keyboardElement: HTMLElement,
   toggleButton: HTMLButtonElement,
-  initialVisibility: boolean
+  initialVisibility: boolean,
+  onPitchTrigger?: KeyboardPitchHandler
 ): KeyboardController {
   let isVisible = initialVisibility;
   let focusStartPitch = MIDDLE_C_PITCH;
   let focusEndPitch = MIDDLE_C_PITCH;
   let activeKeys: HTMLElement[] = [];
+  const auditionTimers = new Map<HTMLElement, number>();
 
   const updateToggleButton = () => {
     const label = isVisible ? "Hide keyboard" : "Show keyboard";
@@ -113,6 +118,7 @@ export function createKeyboardController(
 
   const setup = (pitches: number[]) => {
     const tunePitches = new Set(pitches);
+    clearAuditionKeys();
     keyboardElement.replaceChildren();
     activeKeys = [];
     focusStartPitch = pitches[0] ?? MIDDLE_C_PITCH;
@@ -134,6 +140,8 @@ export function createKeyboardController(
       key.dataset.pitch = String(pitch);
       key.dataset.note = getMidiNoteName(pitch);
       key.title = getMidiNoteName(pitch);
+      key.setAttribute("role", "button");
+      key.setAttribute("aria-label", `Play ${getMidiNoteName(pitch)}`);
       keyboardElement.append(key);
     }
 
@@ -164,6 +172,42 @@ export function createKeyboardController(
     }
   };
 
+  const clearAuditionKeys = () => {
+    for (const [key, timerId] of auditionTimers) {
+      window.clearTimeout(timerId);
+      key.classList.remove("chatmusic-key-auditioning");
+    }
+    auditionTimers.clear();
+  };
+
+  const flashAuditionKey = (key: HTMLElement) => {
+    const existingTimerId = auditionTimers.get(key);
+    if (existingTimerId !== undefined) window.clearTimeout(existingTimerId);
+
+    key.classList.add("chatmusic-key-auditioning");
+    auditionTimers.set(
+      key,
+      window.setTimeout(() => {
+        key.classList.remove("chatmusic-key-auditioning");
+        auditionTimers.delete(key);
+      }, AUDITION_HIGHLIGHT_MS)
+    );
+  };
+
+  const triggerKeyboardPitch = (event: MouseEvent) => {
+    if (!onPitchTrigger) return;
+
+    const target = event.target;
+    const key = target instanceof Element ? target.closest(".chatmusic-piano-key") : null;
+    if (!(key instanceof HTMLElement)) return;
+
+    const pitch = Number(key.dataset.pitch);
+    if (!Number.isInteger(pitch)) return;
+
+    flashAuditionKey(key);
+    void onPitchTrigger(pitch);
+  };
+
   const toggleKeyboard = () => setVisible(!isVisible);
   const resizeObserver =
     typeof ResizeObserver === "undefined"
@@ -174,6 +218,7 @@ export function createKeyboardController(
         });
 
   toggleButton.addEventListener("click", toggleKeyboard);
+  keyboardElement.addEventListener("click", triggerKeyboardPitch);
   resizeObserver?.observe(keyboardElement);
   updateToggleButton();
 
@@ -184,7 +229,9 @@ export function createKeyboardController(
     clearActiveKeys,
     syncSize,
     dispose: () => {
+      clearAuditionKeys();
       toggleButton.removeEventListener("click", toggleKeyboard);
+      keyboardElement.removeEventListener("click", triggerKeyboardPitch);
       resizeObserver?.disconnect();
     },
   };

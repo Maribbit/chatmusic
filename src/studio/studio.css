@@ -208,7 +208,9 @@ button {
 .preview-pane {
   grid-column: 3;
   grid-row: 1 / span 2;
-  display: block;
+  display: grid;
+  grid-template-rows: minmax(0, 1fr);
+  min-height: 0;
 }
 
 .pane-header {
@@ -265,7 +267,9 @@ button {
 }
 
 .render-mount .chatmusic-host {
+  display: block;
   height: 100%;
+  min-height: 0;
 }
 
 .studio-render-source {

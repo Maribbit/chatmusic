@@ -27,7 +27,11 @@ import {
   getScoreSvg,
   getSvgDownloadFilename,
 } from "./svg-export";
-import { getLocalPianoSynthOptions } from "./soundfont";
+import {
+  getLocalPianoSynthOptions,
+  playLocalPianoPitch,
+  warmLocalPianoSoundfont,
+} from "./soundfont";
 import { createTempoControl, type TempoControl } from "./tempo-control";
 import { applyRenderViewTheme, createRenderView } from "./view";
 
@@ -116,6 +120,7 @@ async function initSynth(instance: RenderInstance): Promise<void> {
     );
     setupDurationControl(instance);
     setupTempoControl(instance);
+    schedulePianoSoundfontWarmup();
     instance.synthControl = synthControl;
   } catch (err) {
     console.error("[ChatMusic] Synth init error:", err);
@@ -308,7 +313,8 @@ export function renderAbc(
   const keyboard = createKeyboardController(
     elements.keyboardElement,
     elements.keyboardToggleButton,
-    keyboardVisibility === "visible"
+    keyboardVisibility === "visible",
+    playKeyboardPitch
   );
   const durationControl = createDurationControl();
   const tempoControl = createTempoControl(
@@ -364,6 +370,26 @@ export function renderAbc(
   initSynth(instance);
 
   return instance;
+}
+
+function playKeyboardPitch(pitch: number): void {
+  playLocalPianoPitch(pitch).catch((err: unknown) => {
+    console.warn("[ChatMusic] Keyboard pitch playback failed:", err);
+  });
+}
+
+function schedulePianoSoundfontWarmup(): void {
+  const warmup = () => {
+    warmLocalPianoSoundfont().catch((err: unknown) => {
+      console.warn("[ChatMusic] Piano soundfont warmup failed:", err);
+    });
+  };
+
+  if ("requestIdleCallback" in window) {
+    window.requestIdleCallback(warmup, { timeout: 1500 });
+  } else {
+    setTimeout(warmup, 0);
+  }
 }
 
 function setupStudioButton(instance: RenderInstance): void {

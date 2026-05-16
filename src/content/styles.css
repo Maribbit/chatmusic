@@ -291,7 +291,7 @@
 }
 
 :host([data-chatmusic-layout="studio"]) .chatmusic-score {
-  flex: 1 1 auto !important;
+  flex: 1 1 0 !important;
   max-height: none !important;
   min-height: 0 !important;
   overflow: auto !important;
@@ -378,6 +378,7 @@
   box-sizing: border-box;
   flex: 0 0 auto;
   border-radius: 0 0 3px 3px;
+  cursor: pointer;
   transition: background-color 120ms ease, color 120ms ease, box-shadow 120ms ease;
 }
 
@@ -449,6 +450,12 @@
   background: var(--chatmusic-playback-highlight);
   color: var(--chatmusic-score-bg);
   box-shadow: inset 0 0 0 2px rgb(255 255 255 / 35%);
+}
+
+.chatmusic-key-auditioning {
+  background: var(--chatmusic-playback-highlight);
+  color: var(--chatmusic-score-bg);
+  box-shadow: inset 0 0 0 2px rgb(255 255 255 / 45%);
 }
 
 .chatmusic-score .chatmusic-note-playing,
