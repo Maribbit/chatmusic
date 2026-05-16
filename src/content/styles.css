@@ -262,16 +262,24 @@
 }
 
 :host(:fullscreen) .chatmusic-score {
-  flex: 1 1 auto;
-  max-height: none;
-  min-height: 0;
-  overflow: auto;
+  flex: 1 1 auto !important;
+  max-height: none !important;
+  min-height: 0 !important;
+  overflow: auto !important;
+  padding-bottom: 0 !important; /* override abcjs internal hack */
+  display: block !important;
+  position: relative !important;
+  align-self: stretch;
 }
 
 :host(:fullscreen) .chatmusic-header,
 :host(:fullscreen) .chatmusic-keyboard,
 :host(:fullscreen) .chatmusic-audio {
   flex: 0 0 auto;
+}
+
+:host(:fullscreen) .chatmusic-keyboard {
+  margin-top: auto; /* push down if score is short */
 }
 
 .chatmusic-score svg {
@@ -281,8 +289,11 @@
 }
 
 :host(:fullscreen) .chatmusic-score svg {
-  width: 100%;
-  max-width: none;
+  width: 100% !important;
+  max-width: none !important;
+  height: auto !important;
+  position: static !important; /* override abcjs internal hack */
+  display: block !important;
 }
 
 .chatmusic-keyboard {

@@ -21,6 +21,17 @@ The project is currently an MVP moving toward an open-source, Chrome Web Store r
 - npm 11
 - Chrome or a Chromium-based browser for extension testing
 
+## Compatibility
+
+The extension expects ABC notation to be rendered inside standard `<pre>` and `<code>` blocks. It has been tested and confirmed to work on the following AI chat platforms:
+
+- **Supported**:
+  - Google Gemini
+  - Kimi
+  - DeepSeek
+- **Not currently supported**:
+  - GLM (Zhipu) - Uses a non-standard code block rendering structure that the extension currently does not detect.
+
 ## Setup
 
 ```sh
