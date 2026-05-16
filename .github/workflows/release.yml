@@ -1,0 +1,58 @@
+name: GitHub Release
+
+on:
+  push:
+    tags:
+      - "v*.*.*"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Verify tag version
+        run: |
+          tag_version="${GITHUB_REF_NAME#v}"
+          package_version="$(node -p "require('./package.json').version")"
+          manifest_version="$(node -p "require('./manifest.json').version")"
+
+          if [ "$tag_version" != "$package_version" ]; then
+            echo "Tag version $tag_version does not match package.json $package_version."
+            exit 1
+          fi
+
+          if [ "$tag_version" != "$manifest_version" ]; then
+            echo "Tag version $tag_version does not match manifest.json $manifest_version."
+            exit 1
+          fi
+
+      - name: Check
+        run: npm run check
+
+      - name: Package extension
+        run: npm run release:package
+
+      - name: Create GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          version="${GITHUB_REF_NAME#v}"
+          gh release create "$GITHUB_REF_NAME" \
+            "chatmusic-v${version}.zip" \
+            --title "ChatMusic ${version}" \
+            --generate-notes

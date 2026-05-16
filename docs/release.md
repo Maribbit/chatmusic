@@ -54,16 +54,21 @@ npm run release:package
 
 The zip file is ignored by Git and should not be committed.
 
-## 5. Publish
+## 5. GitHub Release
 
-1. Upload the zip to the Chrome Web Store Developer Dashboard.
-2. Complete the privacy and permission questionnaires.
-3. Submit for review.
-4. After approval, tag the release in Git if the repository is public:
+After manual QA passes, create and push a version tag to trigger the GitHub Release workflow:
 
 ```sh
 git tag vX.Y.Z
 git push origin main --tags
 ```
 
-Do not create tags or publish packages from an AI-assisted session unless the user explicitly requests it.
+The workflow runs the full check, builds the extension, creates `chatmusic-vX.Y.Z.zip`, and attaches it to a GitHub Release. Do not create tags from an AI-assisted session unless explicitly requested.
+
+## 6. Publish To Chrome Web Store
+
+1. Upload the zip to the Chrome Web Store Developer Dashboard.
+2. Complete the privacy and permission questionnaires.
+3. Submit for review.
+
+Do not publish Chrome Web Store packages from an AI-assisted session unless the user explicitly requests it.
