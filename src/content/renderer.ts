@@ -37,6 +37,7 @@ export interface RenderInstance {
   tempoControl: TempoControl;
   durationControl: DurationControl;
   exportButton: HTMLButtonElement;
+  studioButton: HTMLButtonElement;
   codeToggleButton: HTMLButtonElement;
   preElement: Element;
   preElementOriginalDisplay: string | null;
@@ -333,6 +334,7 @@ export function renderAbc(
     tempoControl,
     durationControl,
     exportButton: elements.exportButton,
+    studioButton: elements.studioButton,
     codeToggleButton: elements.codeToggleButton,
     preElement,
     preElementOriginalDisplay: null,
@@ -350,6 +352,7 @@ export function renderAbc(
 
   setupCodeToggleButton(instance);
   setupExportButton(instance);
+  setupStudioButton(instance);
   applyCodeBlockVisibility(instance, codeBlockVisibility);
   applyKeyboardVisibility(instance, keyboardVisibility);
   setupKeyboard(instance);
@@ -359,6 +362,22 @@ export function renderAbc(
   initSynth(instance);
 
   return instance;
+}
+
+function setupStudioButton(instance: RenderInstance): void {
+  const openStudio = () => {
+    chrome.runtime.sendMessage({
+      type: "OPEN_STUDIO",
+      abcText: instance.abcText,
+    });
+  };
+  const previousCleanup = instance.cleanup;
+
+  instance.studioButton.addEventListener("click", openStudio);
+  instance.cleanup = () => {
+    instance.studioButton.removeEventListener("click", openStudio);
+    previousCleanup();
+  };
 }
 
 function setupExportButton(instance: RenderInstance): void {

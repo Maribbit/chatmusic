@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light" data-theme-mode="auto">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ChatMusic Studio</title>
+  <link rel="stylesheet" href="./studio.css">
+</head>
+<body>
+  <main class="studio-shell">
+    <header class="studio-header">
+      <div class="studio-brand" aria-label="ChatMusic Studio">
+        <img class="studio-brand-mark" src="/icons/icon48.png" alt="" aria-hidden="true">
+        <div>
+          <h1>ChatMusic Studio</h1>
+        </div>
+      </div>
+
+      <div class="studio-actions" aria-label="Studio actions">
+        <label class="studio-theme-field" for="themeModeSelect">
+          <span>Theme</span>
+          <select id="themeModeSelect">
+            <option value="auto">Auto</option>
+            <option value="light">Light</option>
+            <option value="dark">Dark</option>
+          </select>
+        </label>
+        <button class="secondary-button" id="loadExampleButton" type="button">Example</button>
+        <button class="secondary-button" id="clearButton" type="button">Clear</button>
+      </div>
+    </header>
+
+    <div class="studio-layout">
+      <section class="editor-pane" aria-labelledby="editorTitle">
+        <div class="pane-header">
+          <h2 id="editorTitle">ABC Source</h2>
+          <div class="pane-tools">
+            <span id="renderStatus" aria-live="polite">Ready</span>
+            <span id="sourceStats" aria-live="polite">0 chars</span>
+            <button class="secondary-button compact-button" id="copySourceButton" type="button">
+              Copy
+            </button>
+          </div>
+        </div>
+          <textarea id="abcInput" spellcheck="false" wrap="off" aria-label="ABC source code"></textarea>
+      </section>
+
+        <div
+          class="studio-resizer"
+          id="studioResizer"
+          role="separator"
+          aria-label="Resize editor and preview"
+          aria-orientation="vertical"
+          tabindex="0"
+        ></div>
+
+      <section class="preview-pane" aria-label="Preview">
+        <div class="render-mount" id="renderMount">
+          <div class="empty-preview" id="emptyPreview">
+            <strong>No score</strong>
+            <span>Waiting for source</span>
+          </div>
+          <pre class="studio-render-source" id="studioSource" aria-hidden="true"></pre>
+        </div>
+      </section>
+    </div>
+  </main>
+
+  <script type="module" src="./studio.ts"></script>
+</body>
+</html>

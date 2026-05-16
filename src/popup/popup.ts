@@ -27,6 +27,9 @@ const codeBlockVisibilitySelect = document.getElementById(
 const keyboardVisibilitySelect = document.getElementById(
   "keyboardVisibilitySelect"
 ) as HTMLSelectElement;
+const openStudioButton = document.getElementById(
+  "openStudioButton"
+) as HTMLButtonElement;
 const statusEl = document.getElementById("status") as HTMLElement;
 
 // Load current state
@@ -132,6 +135,12 @@ keyboardVisibilitySelect.addEventListener("change", async () => {
     getSelectedCodeBlockVisibility(),
     keyboardVisibility
   );
+});
+
+openStudioButton.addEventListener("click", async () => {
+  await chrome.tabs.create({
+    url: chrome.runtime.getURL("src/studio/index.html"),
+  });
 });
 
 function getSelectedThemeMode(): ThemeMode {
