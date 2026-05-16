@@ -6,6 +6,7 @@ import { scanForAbc } from "./detector";
 import {
   renderAbc,
   hasRender,
+  removeDisconnectedRenders,
   updateRenderThemes,
   updateCodeBlockVisibility,
   updateKeyboardVisibility,
@@ -53,6 +54,8 @@ let themeObserverStarted = false;
  */
 function fullScan(): void {
   if (!enabled) return;
+
+  removeDisconnectedRenders();
 
   const results = scanForAbc(document);
   log("Full scan: found", results.length, "ABC candidates");
@@ -126,6 +129,7 @@ function setupObserver(): void {
   if (domObserverStarted) return;
 
   const observer = new MutationObserver(() => {
+    removeDisconnectedRenders();
     scheduleScan();
   });
 

@@ -552,14 +552,32 @@ export function updateRenderThemes(themeMode: ThemeMode): void {
 export function removeRender(preElement: Element): void {
   const instance = instances.get(preElement);
   if (instance) {
-    if (instance.synthControl) {
-      instance.synthControl.pause();
-    }
-    setCodeCollapsed(instance, false);
-    instance.cleanup();
-    instance.container.remove();
-    instances.delete(preElement);
+    disposeRender(preElement, instance, preElement.isConnected);
   }
+}
+
+export function removeDisconnectedRenders(): void {
+  for (const [preElement, instance] of instances) {
+    if (!preElement.isConnected || !instance.container.isConnected) {
+      disposeRender(preElement, instance, preElement.isConnected);
+    }
+  }
+}
+
+function disposeRender(
+  preElement: Element,
+  instance: RenderInstance,
+  restoreCodeDisplay: boolean
+): void {
+  if (instance.synthControl) {
+    instance.synthControl.pause();
+    instance.synthControl = null;
+  }
+  clearPlaybackHighlight(instance);
+  if (restoreCodeDisplay) setCodeCollapsed(instance, false);
+  instance.cleanup();
+  instance.container.remove();
+  instances.delete(preElement);
 }
 
 /**
