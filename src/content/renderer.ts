@@ -13,6 +13,8 @@ import {
   type KeyboardVisibility,
   type ThemeMode,
 } from "../shared/settings";
+import { getExtensionRuntime } from "../shared/extension-runtime";
+import { createOpenStudioMessage } from "../shared/messages";
 import { createDurationControl, type DurationControl } from "./duration-control";
 import { getTuneDurationSeconds } from "./duration";
 import {
@@ -365,11 +367,15 @@ export function renderAbc(
 }
 
 function setupStudioButton(instance: RenderInstance): void {
+  const runtime = getExtensionRuntime();
+
+  if (!runtime?.sendMessage) {
+    instance.studioButton.hidden = true;
+    return;
+  }
+
   const openStudio = () => {
-    chrome.runtime.sendMessage({
-      type: "OPEN_STUDIO",
-      abcText: instance.abcText,
-    });
+    void runtime.sendMessage?.(createOpenStudioMessage(instance.abcText));
   };
   const previousCleanup = instance.cleanup;
 

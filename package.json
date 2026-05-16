@@ -5,8 +5,13 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "vite build",
+    "dev:extension": "vite",
+    "dev:web": "vite --config vite.web.config.ts",
+    "build": "npm run build:extension",
+    "build:extension": "vite build",
+    "build:web": "vite build --config vite.web.config.ts",
     "preview": "vite preview",
+    "preview:web": "vite preview --config vite.web.config.ts",
     "audit": "npm audit --audit-level=high",
     "version:check": "node scripts/check-version.mjs",
     "lint": "eslint .",
@@ -14,8 +19,8 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
-    "release:package": "npm run build && rm -f chatmusic-v$npm_package_version.zip && cd dist && zip -qr ../chatmusic-v$npm_package_version.zip .",
-    "check": "npm run audit && npm run version:check && npm run lint && npm run typecheck && npm run test && npm run build"
+    "release:package": "npm run build:extension && rm -f chatmusic-v$npm_package_version.zip && cd dist && zip -qr ../chatmusic-v$npm_package_version.zip .",
+    "check": "npm run audit && npm run version:check && npm run lint && npm run typecheck && npm run test && npm run build:extension && npm run build:web"
   },
   "keywords": [
     "chrome-extension",

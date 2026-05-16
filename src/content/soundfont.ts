@@ -1,4 +1,5 @@
 import type abcjs from "abcjs";
+import { getAssetUrl } from "../shared/assets";
 
 export const LOCAL_PIANO_INSTRUMENT = "acoustic_grand_piano";
 
@@ -6,7 +7,7 @@ const LOCAL_PIANO_SOUNDFONT_PATH = "soundfonts/FluidR3_GM/";
 
 export function getLocalPianoSynthOptions(): abcjs.SynthOptions {
   return {
-    soundFontUrl: chrome.runtime.getURL(LOCAL_PIANO_SOUNDFONT_PATH),
+    soundFontUrl: getAssetUrl(LOCAL_PIANO_SOUNDFONT_PATH),
     sequenceCallback: forcePianoInstrument,
   };
 }

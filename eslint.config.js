@@ -4,12 +4,12 @@ import tseslint from "typescript-eslint";
 
 export default tseslint.config(
   {
-    ignores: ["dist/", "node_modules/", "coverage/"],
+    ignores: ["dist/", "dist-web/", "node_modules/", "coverage/"],
   },
   js.configs.recommended,
   ...tseslint.configs.recommended,
   {
-    files: ["src/**/*.ts", "vite.config.ts"],
+    files: ["src/**/*.ts", "vite.config.ts", "vite.web.config.ts"],
     languageOptions: {
       ecmaVersion: 2020,
       sourceType: "module",

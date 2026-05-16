@@ -1,23 +1,21 @@
 import {
   DEFAULT_THEME_MODE,
-  KEYBOARD_VISIBILITY_STORAGE_KEY,
-  THEME_MODE_STORAGE_KEY,
-  normalizeKeyboardVisibility,
   normalizeThemeMode,
   type KeyboardVisibility,
   type ThemeMode,
 } from "../shared/settings";
+import { decodeStudioAbcHash } from "../shared/studio-url";
 import {
   renderAbc,
   removeRender,
   type RenderInstance,
 } from "../content/renderer";
+import { loadStudioSettings, saveStudioThemeMode } from "./settings-store";
 
 const STUDIO_SOURCE_STORAGE_KEY = "chatmusicStudioAbcText";
 const STUDIO_DESKTOP_SPLIT_STORAGE_KEY = "chatmusicStudioDesktopSplit";
 const STUDIO_MOBILE_SPLIT_STORAGE_KEY = "chatmusicStudioMobileSplit";
 const RENDER_DEBOUNCE_MS = 350;
-const URL_ABC_HASH_PREFIX = "abc=";
 const MIN_DESKTOP_EDITOR_WIDTH = 280;
 const MIN_DESKTOP_PREVIEW_WIDTH = 320;
 const MIN_MOBILE_EDITOR_HEIGHT = 160;
@@ -72,7 +70,7 @@ async function initializeStudio(): Promise<void> {
     EXAMPLE_ABC;
   window.localStorage.setItem(STUDIO_SOURCE_STORAGE_KEY, input.value);
 
-  const settings = await loadSettings();
+  const settings = await loadStudioSettings();
   currentKeyboardVisibility = settings.keyboardVisibility;
   themeModeSelect.value = settings.themeMode;
   applyStudioTheme(settings.themeMode);
@@ -98,7 +96,7 @@ async function initializeStudio(): Promise<void> {
   themeModeSelect.addEventListener("change", async () => {
     const themeMode = normalizeThemeMode(themeModeSelect.value);
     applyStudioTheme(themeMode);
-    await chrome.storage.sync.set({ [THEME_MODE_STORAGE_KEY]: themeMode });
+    await saveStudioThemeMode(themeMode);
     renderCurrentInput();
   });
   colorSchemeQuery.addEventListener("change", () => {
@@ -223,36 +221,11 @@ function clamp(value: number, min: number, max: number): number {
 }
 
 function readAbcFromUrlHash(): string | null {
-  const hash = window.location.hash.slice(1);
-  if (!hash.startsWith(URL_ABC_HASH_PREFIX)) return null;
+  const abcText = decodeStudioAbcHash(window.location.hash);
+  if (abcText === null) return null;
 
-  const abcText = decodeURIComponent(hash.slice(URL_ABC_HASH_PREFIX.length));
   window.history.replaceState(null, "", window.location.pathname);
   return abcText;
-}
-
-async function loadSettings(): Promise<{
-  themeMode: ThemeMode;
-  keyboardVisibility: KeyboardVisibility;
-}> {
-  return new Promise((resolve) => {
-    chrome.storage.sync.get(
-      [
-        THEME_MODE_STORAGE_KEY,
-        KEYBOARD_VISIBILITY_STORAGE_KEY,
-      ],
-      (result) => {
-        resolve({
-          themeMode: normalizeThemeMode(
-            result[THEME_MODE_STORAGE_KEY] ?? DEFAULT_THEME_MODE
-          ),
-          keyboardVisibility: normalizeKeyboardVisibility(
-            result[KEYBOARD_VISIBILITY_STORAGE_KEY]
-          ),
-        });
-      }
-    );
-  });
 }
 
 function setInputValue(value: string): void {

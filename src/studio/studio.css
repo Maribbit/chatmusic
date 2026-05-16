@@ -13,7 +13,7 @@
   --studio-code-bg: #101827;
   --studio-code-text: #dbeafe;
   --studio-empty-bg: #eef2f7;
-    --studio-editor-size: 44%;
+  --studio-editor-size: 44%;
   --studio-editor-mobile-size: 38vh;
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
 }
@@ -140,6 +140,7 @@ button {
   border: 1px solid var(--studio-border);
   background: var(--studio-panel);
   color: var(--studio-text);
+  font-size: 13px;
 }
 
 .secondary-button:hover {

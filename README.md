@@ -2,7 +2,7 @@
 
 ChatMusic is a Chrome extension that detects ABC notation in web page code blocks, renders the matching score below the block, and provides piano-style playback through abcjs.
 
-The project is currently an MVP moving toward an open-source, Chrome Web Store ready extension.
+The project is currently an MVP moving toward an open-source, Chrome Web Store ready extension. It also includes a standalone Studio page that can be built as a static web app from the same codebase.
 
 ## Features
 
@@ -14,6 +14,7 @@ The project is currently an MVP moving toward an open-source, Chrome Web Store r
 - Uses bundled piano soundfont samples for default playback without remote soundfont requests.
 - Highlights playback notes and shows an 88-key piano keyboard visualization.
 - Offers theme controls, fullscreen viewing, source collapse, tempo display, duration display, and SVG score export.
+- Includes ChatMusic Studio for pasting ABC notation directly, rendering it live, and opening detected scores in the Studio.
 
 ## Requirements
 
@@ -40,8 +41,10 @@ npm install
 
 ## Development
 
+For extension development:
+
 ```sh
-npm run dev
+npm run dev:extension
 ```
 
 Keep the Vite dev server running, then load the generated `dist/` directory as an unpacked extension in Chrome:
@@ -56,18 +59,37 @@ The CRX/Vite plugin writes a development manifest into `dist/` and injects HMR l
 For a production-like build:
 
 ```sh
-npm run build
+npm run build:extension
 ```
 
 Then load the `dist/` directory as an unpacked extension.
+
+For standalone Studio web development:
+
+```sh
+npm run dev:web
+```
+
+For a production web build:
+
+```sh
+npm run build:web
+```
+
+The web build writes to `dist-web/`. Set `CHATMUSIC_WEB_BASE` when deploying under a subpath, for example `CHATMUSIC_WEB_BASE=/chatmusic/ npm run build:web`.
 
 ## Commands
 
 | Command | Purpose |
 | --- | --- |
-| `npm run dev` | Start the Vite/CRX development server. |
+| `npm run dev` | Start the default extension development server. |
+| `npm run dev:extension` | Start the Vite/CRX extension development server. |
+| `npm run dev:web` | Start the standalone Studio web development server. |
 | `npm run build` | Build the production extension into `dist/`. |
-| `npm run preview` | Preview the Vite build output. |
+| `npm run build:extension` | Build the production extension into `dist/`. |
+| `npm run build:web` | Build the standalone Studio web app into `dist-web/`. |
+| `npm run preview` | Preview the extension Vite build output. |
+| `npm run preview:web` | Preview the standalone Studio web build output. |
 | `npm run audit` | Fail on high severity npm audit findings. |
 | `npm run lint` | Run ESLint. |
 | `npm run lint:fix` | Run ESLint with safe automatic fixes. |
@@ -83,7 +105,10 @@ Then load the `dist/` directory as an unpacked extension.
 src/background/   Chrome extension service worker
 src/content/      Page detection, rendering, and content script styles
 src/popup/        Extension popup UI
+src/shared/       Cross-target adapters and shared settings helpers
+src/studio/       Studio page shared by the extension and standalone web build
 public/icons/     Extension icons copied into the build output
+public/soundfonts/ Bundled piano soundfont samples used by abcjs playback
 docs/             Project process and release documentation
 ```
 
@@ -91,9 +116,10 @@ docs/             Project process and release documentation
 
 - Use ESLint only for code quality and lightweight style checks. Do not add Prettier unless the project explicitly changes direction.
 - Keep `package-lock.json` committed for reproducible installs.
-- Do not commit `dist/`, `node_modules/`, extension package archives, or signing keys.
+- Do not commit `dist/`, `dist-web/`, `node_modules`, extension package archives, or signing keys.
 - Add or update unit tests when changing ABC detection behavior.
 - Run `npm run check` before opening a pull request or making a release commit.
+- Keep extension/web shared logic behind the adapters documented in [docs/dual-build.md](docs/dual-build.md).
 
 ## Privacy and Permissions
 

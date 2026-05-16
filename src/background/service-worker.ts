@@ -2,29 +2,13 @@
  * ChatMusic Background Service Worker.
  * Handles badge updates and extension lifecycle.
  */
-
-interface OpenStudioMessage {
-  type: "OPEN_STUDIO";
-  abcText: string;
-}
-
-function isOpenStudioMessage(message: unknown): message is OpenStudioMessage {
-  return (
-    typeof message === "object" &&
-    message !== null &&
-    "type" in message &&
-    message.type === "OPEN_STUDIO" &&
-    "abcText" in message &&
-    typeof message.abcText === "string"
-  );
-}
+import { isOpenStudioMessage } from "../shared/messages";
+import { createStudioUrl } from "../shared/studio-url";
 
 // Update badge text when content script reports ABC detections
 chrome.runtime.onMessage.addListener((message, sender) => {
   if (isOpenStudioMessage(message)) {
-    const studioUrl = new URL(chrome.runtime.getURL("src/studio/index.html"));
-    studioUrl.hash = `abc=${encodeURIComponent(message.abcText)}`;
-    void chrome.tabs.create({ url: studioUrl.toString() });
+    void chrome.tabs.create({ url: createStudioUrl(message.abcText) });
     return;
   }
 

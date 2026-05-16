@@ -8,7 +8,7 @@ Before editing:
 
 1. Read [README.md](../README.md), [CONTRIBUTING.md](../CONTRIBUTING.md), and [.github/copilot-instructions.md](../.github/copilot-instructions.md).
 2. Check `git status --short` and preserve user changes.
-3. Identify the smallest project boundary involved: detector, renderer, content entry, popup, background worker, tooling, or docs.
+3. Identify the smallest project boundary involved: detector, renderer, content entry, popup, background worker, Studio, shared adapter, tooling, or docs.
 
 Before committing:
 
@@ -23,6 +23,7 @@ Before committing:
 - Use ESLint only for code style and quality checks.
 - Do not introduce Prettier, a new formatter, or a larger framework without an explicit project decision.
 - Add unit tests for detector logic and state transitions when behavior changes.
+- For extension/web dual-build changes, use the adapters in [dual-build.md](dual-build.md) and add regression tests for the adapter behavior.
 - Keep manifest permissions narrow and explain any permission change.
 - Do not commit generated extension builds.
 

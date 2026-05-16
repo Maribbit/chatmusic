@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { forcePianoInstrument, LOCAL_PIANO_INSTRUMENT } from "./soundfont";
+import {
+  forcePianoInstrument,
+  getLocalPianoSynthOptions,
+  LOCAL_PIANO_INSTRUMENT,
+} from "./soundfont";
 
 describe("soundfont helpers", () => {
   it("rewrites all playback notes to the bundled piano instrument", () => {
@@ -33,5 +37,11 @@ describe("soundfont helpers", () => {
       LOCAL_PIANO_INSTRUMENT,
       LOCAL_PIANO_INSTRUMENT,
     ]);
+  });
+
+  it("points abcjs at the bundled piano soundfont directory", () => {
+    expect(getLocalPianoSynthOptions().soundFontUrl).toBe(
+      "/soundfonts/FluidR3_GM/"
+    );
   });
 });
