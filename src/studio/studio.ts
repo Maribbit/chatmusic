@@ -20,8 +20,8 @@ const RENDER_DEBOUNCE_MS = 350;
 const URL_ABC_HASH_PREFIX = "abc=";
 const MIN_DESKTOP_EDITOR_WIDTH = 280;
 const MIN_DESKTOP_PREVIEW_WIDTH = 320;
-const MIN_MOBILE_EDITOR_HEIGHT = 280;
-const MIN_MOBILE_PREVIEW_HEIGHT = 420;
+const MIN_MOBILE_EDITOR_HEIGHT = 160;
+const MIN_MOBILE_PREVIEW_HEIGHT = 220;
 const SPLIT_KEYBOARD_STEP = 24;
 
 const EXAMPLE_ABC = `X: 1
@@ -64,6 +64,7 @@ void initializeStudio();
 async function initializeStudio(): Promise<void> {
   restoreSplitSizes();
   updateResizerOrientation();
+  window.requestAnimationFrame(clampRestoredSplitSize);
 
   input.value =
     readAbcFromUrlHash() ??
@@ -137,6 +138,12 @@ function updateResizerOrientation(): void {
     "aria-orientation",
     isStackedLayout() ? "horizontal" : "vertical"
   );
+}
+
+function clampRestoredSplitSize(): void {
+  if (isStackedLayout()) {
+    setMobileEditorHeight(editorPane.getBoundingClientRect().height);
+  }
 }
 
 function startResize(event: PointerEvent): void {
