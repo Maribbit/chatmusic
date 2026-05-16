@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128" role="img" aria-label="ChatMusic icon">
+  <rect width="128" height="128" rx="26" fill="#16232e"/>
+  <path d="M25 41c0-8.8 7.2-16 16-16h46c8.8 0 16 7.2 16 16v23c0 8.8-7.2 16-16 16H62L44 98V80h-3c-8.8 0-16-7.2-16-16V41Z" fill="#2f8f83"/>
+  <path d="M45 51 34 62l11 11M83 51l11 11-11 11" fill="none" stroke="#d8fff4" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M68 35v36.5a10.5 10.5 0 1 1-7-9.9V43l25-6v28.5a10.5 10.5 0 1 1-7-9.9V44.8l-11 2.6Z" fill="#ffffff"/>
+</svg>
