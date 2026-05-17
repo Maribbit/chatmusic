@@ -5,9 +5,10 @@ ChatMusic supports local format conversion for workflows where ABC notation is e
 ## Current Capabilities
 
 - **ABC to MIDI**: rendered scores can be downloaded as `.mid` files from the score toolbar. This uses abcjs' built-in MIDI generator and does not introduce a separate MIDI implementation.
-- **MusicXML to ABC**: Studio can import uncompressed `.musicxml` and `.xml` files and convert them to ABC in the editor. The converter runs fully in the browser and does not upload score content.
+- **ABC source files**: Studio can open `.abc` and `.txt` files, and can save the current source as a `.abc` file.
+- **MusicXML to ABC**: Studio can import `.musicxml`, `.xml`, and compressed `.mxl` files and convert them to ABC in the editor. The converter runs fully in the browser and does not upload score content.
 
-Compressed `.mxl` files are intentionally rejected for now. Users can export uncompressed MusicXML from notation apps such as MuseScore before importing.
+Compressed `.mxl` files are unpacked locally in the browser and then passed through the same MusicXML converter.
 
 ## Why The MusicXML Converter Is Local
 
@@ -39,7 +40,6 @@ The converter is designed for simple, useful score exchange:
 
 The importer is not a complete MusicXML implementation. These areas should be treated as future work or explicitly tested before expanding user promises:
 
-- Compressed `.mxl` archives.
 - `score-timewise` documents.
 - Lyrics, articulations, dynamics, ornaments, slurs, tuplets, beams, repeats, layout, page formatting, and advanced engraving details.
 - Clef-aware octave transposition and multi-staff piano layout preservation.

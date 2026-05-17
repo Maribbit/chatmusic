@@ -9,7 +9,8 @@ This project follows a lightweight [Keep a Changelog](https://keepachangelog.com
 ### Added
 
 - MIDI export from rendered score controls in chats and Studio.
-- Uncompressed MusicXML import in Studio for converting `.musicxml` and `.xml` scores into ABC.
+- ABC source file import and export in Studio.
+- MusicXML import in Studio for converting `.musicxml`, `.xml`, and compressed `.mxl` scores into ABC.
 
 ## [0.2.0] - 2026-05-14
 

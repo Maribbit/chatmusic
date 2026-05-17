@@ -25,11 +25,19 @@
             <option value="dark">Dark</option>
           </select>
         </label>
-        <button class="secondary-button" id="importMusicXmlButton" type="button">Import MusicXML</button>
+        <button class="secondary-button" id="importAbcButton" type="button">Open ABC</button>
+        <input
+          id="abcFileInput"
+          type="file"
+          accept=".abc,.txt,text/vnd.abc,text/plain"
+          hidden
+        >
+        <button class="secondary-button" id="exportAbcButton" type="button">Save ABC</button>
+        <button class="secondary-button" id="importMusicXmlButton" type="button">Import MusicXML/MXL</button>
         <input
           id="musicXmlInput"
           type="file"
-          accept=".musicxml,.xml,application/vnd.recordare.musicxml+xml,application/xml,text/xml"
+          accept=".musicxml,.xml,.mxl,application/vnd.recordare.musicxml+xml,application/vnd.recordare.musicxml,application/xml,text/xml"
           hidden
         >
         <button class="secondary-button" id="loadExampleButton" type="button">Example</button>

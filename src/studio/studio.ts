@@ -5,6 +5,11 @@ import {
   type ThemeMode,
 } from "../shared/settings";
 import { decodeStudioAbcHash } from "../shared/studio-url";
+import {
+  downloadAbcSource,
+  getAbcSourceDownloadFilename,
+  importAbcFile,
+} from "../shared/abc-file";
 import { importMusicXmlFile } from "../shared/musicxml-file";
 import {
   renderAbc,
@@ -45,6 +50,15 @@ const themeModeSelect = document.getElementById(
 ) as HTMLSelectElement;
 const copySourceButton = document.getElementById(
   "copySourceButton"
+) as HTMLButtonElement;
+const importAbcButton = document.getElementById(
+  "importAbcButton"
+) as HTMLButtonElement;
+const abcFileInput = document.getElementById(
+  "abcFileInput"
+) as HTMLInputElement;
+const exportAbcButton = document.getElementById(
+  "exportAbcButton"
 ) as HTMLButtonElement;
 const importMusicXmlButton = document.getElementById(
   "importMusicXmlButton"
@@ -90,6 +104,15 @@ async function initializeStudio(): Promise<void> {
 
   copySourceButton.addEventListener("click", () => {
     void copySourceToClipboard();
+  });
+  importAbcButton.addEventListener("click", () => {
+    abcFileInput.click();
+  });
+  abcFileInput.addEventListener("change", () => {
+    void importSelectedAbcFile();
+  });
+  exportAbcButton.addEventListener("click", () => {
+    exportCurrentAbcFile();
   });
   importMusicXmlButton.addEventListener("click", () => {
     musicXmlInput.click();
@@ -252,6 +275,7 @@ function updateSourceStats(): void {
   const lineCount = input.value.length === 0 ? 0 : input.value.split("\n").length;
   sourceStats.textContent = `${lineCount} lines, ${characterCount} chars`;
   copySourceButton.disabled = characterCount === 0;
+  exportAbcButton.disabled = characterCount === 0;
 }
 
 async function copySourceToClipboard(): Promise<void> {
@@ -263,6 +287,36 @@ async function copySourceToClipboard(): Promise<void> {
     sourceStats.textContent = "Copy failed";
   }
 
+  window.setTimeout(updateSourceStats, 1200);
+}
+
+async function importSelectedAbcFile(): Promise<void> {
+  const file = abcFileInput.files?.[0];
+  if (!file) return;
+
+  renderStatus.textContent = "Opening ABC...";
+  importAbcButton.disabled = true;
+
+  try {
+    const abcText = await importAbcFile(file);
+    setInputValue(abcText);
+    renderCurrentInput();
+    renderStatus.textContent = "Opened ABC";
+  } catch (error) {
+    console.error("[ChatMusic Studio] ABC import failed:", error);
+    renderStatus.textContent = getImportErrorMessage(error);
+  } finally {
+    importAbcButton.disabled = false;
+    abcFileInput.value = "";
+  }
+}
+
+function exportCurrentAbcFile(): void {
+  const abcText = input.value;
+  if (!abcText.trim()) return;
+
+  downloadAbcSource(abcText, getAbcSourceDownloadFilename(abcText));
+  sourceStats.textContent = "Saved ABC";
   window.setTimeout(updateSourceStats, 1200);
 }
 
