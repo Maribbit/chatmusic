@@ -5,6 +5,7 @@ import {
   type ThemeMode,
 } from "../shared/settings";
 import { decodeStudioAbcHash } from "../shared/studio-url";
+import { importMusicXmlFile } from "../shared/musicxml-file";
 import {
   renderAbc,
   removeRender,
@@ -45,6 +46,12 @@ const themeModeSelect = document.getElementById(
 const copySourceButton = document.getElementById(
   "copySourceButton"
 ) as HTMLButtonElement;
+const importMusicXmlButton = document.getElementById(
+  "importMusicXmlButton"
+) as HTMLButtonElement;
+const musicXmlInput = document.getElementById(
+  "musicXmlInput"
+) as HTMLInputElement;
 const loadExampleButton = document.getElementById(
   "loadExampleButton"
 ) as HTMLButtonElement;
@@ -83,6 +90,12 @@ async function initializeStudio(): Promise<void> {
 
   copySourceButton.addEventListener("click", () => {
     void copySourceToClipboard();
+  });
+  importMusicXmlButton.addEventListener("click", () => {
+    musicXmlInput.click();
+  });
+  musicXmlInput.addEventListener("change", () => {
+    void importSelectedMusicXmlFile();
   });
   loadExampleButton.addEventListener("click", () => {
     setInputValue(EXAMPLE_ABC);
@@ -251,6 +264,32 @@ async function copySourceToClipboard(): Promise<void> {
   }
 
   window.setTimeout(updateSourceStats, 1200);
+}
+
+async function importSelectedMusicXmlFile(): Promise<void> {
+  const file = musicXmlInput.files?.[0];
+  if (!file) return;
+
+  renderStatus.textContent = "Importing...";
+  importMusicXmlButton.disabled = true;
+
+  try {
+    const abcText = await importMusicXmlFile(file);
+    setInputValue(abcText);
+    renderCurrentInput();
+    renderStatus.textContent = "Imported MusicXML";
+  } catch (error) {
+    console.error("[ChatMusic Studio] MusicXML import failed:", error);
+    renderStatus.textContent = getImportErrorMessage(error);
+  } finally {
+    importMusicXmlButton.disabled = false;
+    musicXmlInput.value = "";
+  }
+}
+
+function getImportErrorMessage(error: unknown): string {
+  if (error instanceof Error) return error.message;
+  return "MusicXML import failed";
 }
 
 function scheduleRender(): void {

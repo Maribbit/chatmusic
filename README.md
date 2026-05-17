@@ -13,8 +13,8 @@ The project is currently an MVP moving toward an open-source, Chrome Web Store r
 - Provides playback controls when browser audio is available.
 - Uses bundled piano soundfont samples for default playback without remote soundfont requests.
 - Highlights playback notes and shows an 88-key piano keyboard visualization.
-- Offers theme controls, fullscreen viewing, source collapse, tempo display, duration display, and SVG score export.
-- Includes ChatMusic Studio for pasting ABC notation directly, rendering it live, and opening detected scores in the Studio.
+- Offers theme controls, fullscreen viewing, source collapse, tempo display, duration display, SVG score export, and MIDI export.
+- Includes ChatMusic Studio for pasting ABC notation directly, importing uncompressed MusicXML, rendering it live, and opening detected scores in the Studio.
 
 ## Requirements
 
@@ -120,6 +120,7 @@ docs/             Project process and release documentation
 - Add or update unit tests when changing ABC detection behavior.
 - Run `npm run check` before opening a pull request or making a release commit.
 - Keep extension/web shared logic behind the adapters documented in [docs/dual-build.md](docs/dual-build.md).
+- Keep format conversion behavior and limitations documented in [docs/conversion.md](docs/conversion.md).
 
 ## Privacy and Permissions
 
