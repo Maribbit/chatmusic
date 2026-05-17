@@ -14,7 +14,7 @@ The project is currently an MVP moving toward an open-source, Chrome Web Store r
 - Uses bundled piano soundfont samples for default playback without remote soundfont requests.
 - Highlights playback notes and shows an 88-key piano keyboard visualization.
 - Offers theme controls, fullscreen viewing, source collapse, tempo display, duration display, SVG score export, and MIDI export.
-- Includes ChatMusic Studio for opening/saving ABC files, importing MusicXML/MXL, rendering it live, and opening detected scores in the Studio.
+- Includes ChatMusic Studio for opening/saving ABC files, importing MusicXML/MXL, checking abcjs parser warnings, rendering it live, and opening detected scores in the Studio.
 
 ## Requirements
 

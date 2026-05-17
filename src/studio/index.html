@@ -52,12 +52,16 @@
           <div class="pane-tools">
             <span id="renderStatus" aria-live="polite">Ready</span>
             <span id="sourceStats" aria-live="polite">0 chars</span>
+            <button class="secondary-button compact-button" id="checkAbcButton" type="button">
+              Check
+            </button>
             <button class="secondary-button compact-button" id="copySourceButton" type="button">
               Copy
             </button>
           </div>
         </div>
-          <textarea id="abcInput" spellcheck="false" wrap="off" aria-label="ABC source code"></textarea>
+        <div class="quality-panel" id="qualityPanel" aria-live="polite" hidden></div>
+        <textarea id="abcInput" spellcheck="false" wrap="off" aria-label="ABC source code"></textarea>
       </section>
 
         <div
