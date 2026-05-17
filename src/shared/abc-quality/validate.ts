@@ -95,6 +95,33 @@ export function sanitizeAbcjsWarning(rawMessage: string): string {
   ).trim();
 }
 
+export function formatAbcQualityReportForAi(report: AbcQualityReport): string {
+  if (report.status === "ok") {
+    return `abcjs parsed this ABC source without parser warnings (${report.tuneCount} tune${report.tuneCount === 1 ? "" : "s"}).`;
+  }
+
+  const lines = [
+    "Please help fix this ABC notation. abcjs reported the following parser feedback:",
+    "",
+  ];
+
+  for (const diagnostic of report.diagnostics) {
+    const location = formatDiagnosticLocation(diagnostic);
+    lines.push(
+      `- ${diagnostic.severity.toUpperCase()}: ${diagnostic.title}${location ? ` (${location})` : ""}`
+    );
+    lines.push(`  ${diagnostic.message}`);
+  }
+
+  return lines.join("\n");
+}
+
+function formatDiagnosticLocation(diagnostic: AbcDiagnostic): string | null {
+  if (diagnostic.line === undefined) return null;
+  if (diagnostic.column === undefined) return `line ${diagnostic.line}`;
+  return `line ${diagnostic.line}, column ${diagnostic.column}`;
+}
+
 function getDiagnosticTitle(message: string): string {
   return message.split(":")[0]?.trim() || "abcjs parser warning";
 }

@@ -1,10 +1,15 @@
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => {
   const pause = vi.fn();
 
   return {
     pause,
+    parseOnly: vi.fn(() => [
+      {
+        warnings: [] as string[],
+      },
+    ]),
     renderAbc: vi.fn((element: HTMLElement) => {
       element.textContent = "rendered score";
       return [
@@ -19,6 +24,7 @@ const mocks = vi.hoisted(() => {
 
 vi.mock("abcjs", () => ({
   default: {
+    parseOnly: mocks.parseOnly,
     renderAbc: mocks.renderAbc,
     synth: {
       supportsAudio: () => true,
@@ -46,6 +52,13 @@ vi.mock("abcjs", () => ({
 
 import { removeDisconnectedRenders, renderAbc } from "./renderer";
 
+beforeAll(() => {
+  Object.defineProperty(HTMLElement.prototype, "scrollTo", {
+    configurable: true,
+    value: vi.fn(),
+  });
+});
+
 afterEach(() => {
   document.body.innerHTML = "";
   vi.clearAllMocks();
@@ -68,5 +81,26 @@ describe("render lifecycle", () => {
 
     expect(mocks.pause).toHaveBeenCalledTimes(1);
     expect(instance.container.isConnected).toBe(false);
+  });
+
+  it("shows abcjs warning feedback in rendered score cards", async () => {
+    mocks.parseOnly.mockReturnValueOnce([
+      {
+        warnings: [
+          'Music Line:4:5: Unknown character ignored: C D <span style="font-weight:bold;">@</span> |',
+        ],
+      },
+    ]);
+    const pre = document.createElement("pre");
+    document.body.append(pre);
+
+    const instance = renderAbc(pre, "X:1\nT:Bad\nK:C\nC D @ |");
+    await Promise.resolve();
+    const shadowRoot = instance.container.shadowRoot;
+
+    expect(shadowRoot?.querySelector(".chatmusic-quality-panel")?.textContent)
+      .toContain("Unknown character ignored");
+    expect(shadowRoot?.querySelector(".chatmusic-quality-panel")?.textContent)
+      .toContain("Line 4, column 5");
   });
 });

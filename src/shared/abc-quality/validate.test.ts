@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { sanitizeAbcjsWarning, validateAbcSource } from "./validate";
+import {
+  formatAbcQualityReportForAi,
+  sanitizeAbcjsWarning,
+  validateAbcSource,
+} from "./validate";
 
 describe("ABC quality validation", () => {
   it("reports empty source as an error", () => {
@@ -39,5 +43,16 @@ describe("ABC quality validation", () => {
         'Music Line:1:2: Bad <span style="font-weight:bold;">&lt;x&gt;</span>'
       )
     ).toBe("Music Line:1:2: Bad <x>");
+  });
+
+  it("formats parser feedback for AI repair prompts", () => {
+    const report = validateAbcSource("X:1\nT:Bad\nK:C\nC D @ |");
+
+    expect(formatAbcQualityReportForAi(report)).toContain(
+      "Please help fix this ABC notation"
+    );
+    expect(formatAbcQualityReportForAi(report)).toContain(
+      "WARNING: Unknown character ignored (line 4, column 5)"
+    );
   });
 });

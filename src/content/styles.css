@@ -29,6 +29,8 @@
   --chatmusic-audio-input-bg: #fff;
   --chatmusic-audio-input-text: #222;
   --chatmusic-audio-input-border: #c9d0da;
+  --chatmusic-warning-bg: #fff8e6;
+  --chatmusic-warning-border: #f3cf74;
   --chatmusic-error-text: #999;
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
 }
@@ -70,6 +72,8 @@
   --chatmusic-audio-input-bg: #17191c;
   --chatmusic-audio-input-text: #e2e7ee;
   --chatmusic-audio-input-border: #4c5562;
+  --chatmusic-warning-bg: #3a2f17;
+  --chatmusic-warning-border: #8b6f2c;
   --chatmusic-error-text: #a5abb3;
 }
 
@@ -261,6 +265,79 @@
   font-family: inherit;
   font-size: 11px;
   white-space: nowrap;
+}
+
+.chatmusic-quality-panel {
+  margin: 0 0 8px;
+  padding: 10px;
+  border: 1px solid var(--chatmusic-warning-border);
+  border-radius: 6px;
+  background: var(--chatmusic-warning-bg);
+  color: var(--chatmusic-text);
+  font-family: inherit;
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.chatmusic-quality-panel[hidden] {
+  display: none;
+}
+
+:host([data-chatmusic-layout="studio"]) .chatmusic-quality-panel {
+  display: none;
+}
+
+.chatmusic-quality-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.chatmusic-quality-summary {
+  font: inherit;
+  font-weight: 600;
+}
+
+.chatmusic-quality-copy-button {
+  all: unset;
+  box-sizing: border-box;
+  flex: 0 0 auto;
+  padding: 4px 8px;
+  border: 1px solid var(--chatmusic-audio-input-border);
+  border-radius: 4px;
+  background: var(--chatmusic-audio-input-bg);
+  color: var(--chatmusic-text);
+  cursor: pointer;
+  font: inherit;
+  font-size: 11px;
+}
+
+.chatmusic-quality-copy-button:hover,
+.chatmusic-quality-copy-button:focus-visible {
+  border-color: var(--chatmusic-audio-thumb);
+  outline: none;
+}
+
+.chatmusic-quality-list {
+  display: grid;
+  gap: 6px;
+  margin: 8px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.chatmusic-quality-item {
+  display: grid;
+  gap: 2px;
+}
+
+.chatmusic-quality-title {
+  font-weight: 600;
+}
+
+.chatmusic-quality-location {
+  color: var(--chatmusic-muted-text);
 }
 
 .chatmusic-tempo-input {

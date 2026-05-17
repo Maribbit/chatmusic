@@ -7,6 +7,10 @@ export interface RenderViewElements {
   keyboardElement: HTMLElement;
   keyboardToggleButton: HTMLButtonElement;
   audioElement: HTMLElement;
+  qualityPanelElement: HTMLElement;
+  qualitySummaryElement: HTMLElement;
+  qualityListElement: HTMLElement;
+  qualityCopyButton: HTMLButtonElement;
   tempoMenuElement: HTMLElement;
   tempoInputElement: HTMLInputElement;
   tempoBpmElement: HTMLElement;
@@ -52,6 +56,18 @@ export function createRenderView(
       ".chatmusic-keyboard-toggle-button"
     ) as HTMLButtonElement,
     audioElement: container.querySelector(".chatmusic-audio") as HTMLElement,
+    qualityPanelElement: container.querySelector(
+      ".chatmusic-quality-panel"
+    ) as HTMLElement,
+    qualitySummaryElement: container.querySelector(
+      ".chatmusic-quality-summary"
+    ) as HTMLElement,
+    qualityListElement: container.querySelector(
+      ".chatmusic-quality-list"
+    ) as HTMLElement,
+    qualityCopyButton: container.querySelector(
+      ".chatmusic-quality-copy-button"
+    ) as HTMLButtonElement,
     tempoMenuElement: container.querySelector(
       ".chatmusic-tempo-menu"
     ) as HTMLElement,
@@ -151,6 +167,13 @@ function renderContainerMarkup(): string {
           </svg>
         </button>
       </div>
+    </div>
+    <div class="chatmusic-quality-panel" aria-live="polite" hidden>
+      <div class="chatmusic-quality-header">
+        <strong class="chatmusic-quality-summary"></strong>
+        <button class="chatmusic-quality-copy-button" type="button">Copy feedback</button>
+      </div>
+      <ul class="chatmusic-quality-list"></ul>
     </div>
     <div class="chatmusic-score"></div>
     <div class="chatmusic-keyboard"></div>

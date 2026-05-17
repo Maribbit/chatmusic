@@ -13,6 +13,13 @@ import {
   type KeyboardVisibility,
   type ThemeMode,
 } from "../shared/settings";
+import type {
+  AbcDiagnostic,
+} from "../shared/abc-quality/diagnostics";
+import {
+  formatAbcQualityReportForAi,
+  validateAbcSource,
+} from "../shared/abc-quality/validate";
 import { getExtensionRuntime } from "../shared/extension-runtime";
 import { createOpenStudioMessage } from "../shared/messages";
 import {
@@ -44,6 +51,10 @@ export interface RenderInstance {
   scoreElement: HTMLElement;
   keyboard: KeyboardController;
   audioElement: HTMLElement;
+  qualityPanelElement: HTMLElement;
+  qualitySummaryElement: HTMLElement;
+  qualityListElement: HTMLElement;
+  qualityCopyButton: HTMLButtonElement;
   tempoControl: TempoControl;
   durationControl: DurationControl;
   exportButton: HTMLButtonElement;
@@ -344,6 +355,10 @@ export function renderAbc(
     scoreElement: elements.scoreElement,
     keyboard,
     audioElement: elements.audioElement,
+    qualityPanelElement: elements.qualityPanelElement,
+    qualitySummaryElement: elements.qualitySummaryElement,
+    qualityListElement: elements.qualityListElement,
+    qualityCopyButton: elements.qualityCopyButton,
     tempoControl,
     durationControl,
     exportButton: elements.exportButton,
@@ -367,7 +382,9 @@ export function renderAbc(
   setupCodeToggleButton(instance);
   setupExportButton(instance);
   setupMidiExportButton(instance);
+  setupQualityCopyButton(instance);
   setupStudioButton(instance);
+  updateQualityPanel(instance);
   applyCodeBlockVisibility(instance, codeBlockVisibility);
   applyKeyboardVisibility(instance, keyboardVisibility);
   setupKeyboard(instance);
@@ -453,6 +470,70 @@ function setupMidiExportButton(instance: RenderInstance): void {
     instance.midiExportButton.removeEventListener("click", exportMidi);
     previousCleanup();
   };
+}
+
+function setupQualityCopyButton(instance: RenderInstance): void {
+  const copyFeedback = () => {
+    const report = validateAbcSource(instance.abcText);
+    const feedback = formatAbcQualityReportForAi(report);
+
+    navigator.clipboard.writeText(feedback).catch((error: unknown) => {
+      console.warn("[ChatMusic] Copy ABC feedback failed:", error);
+    });
+  };
+  const previousCleanup = instance.cleanup;
+
+  instance.qualityCopyButton.addEventListener("click", copyFeedback);
+  instance.cleanup = () => {
+    instance.qualityCopyButton.removeEventListener("click", copyFeedback);
+    previousCleanup();
+  };
+}
+
+function updateQualityPanel(instance: RenderInstance): void {
+  const report = validateAbcSource(instance.abcText);
+
+  if (report.status === "ok") {
+    instance.qualityPanelElement.hidden = true;
+    instance.qualityListElement.replaceChildren();
+    return;
+  }
+
+  instance.qualityPanelElement.hidden = false;
+  instance.qualitySummaryElement.textContent = `${report.diagnostics.length} ABC parser issue${report.diagnostics.length === 1 ? "" : "s"} found.`;
+  instance.qualityListElement.replaceChildren(
+    ...report.diagnostics.map(createQualityDiagnosticItem)
+  );
+}
+
+function createQualityDiagnosticItem(diagnostic: AbcDiagnostic): HTMLElement {
+  const item = document.createElement("li");
+  item.className = "chatmusic-quality-item";
+
+  const title = document.createElement("span");
+  title.className = "chatmusic-quality-title";
+  title.textContent = `${diagnostic.severity.toUpperCase()}: ${diagnostic.title}`;
+
+  const message = document.createElement("span");
+  message.textContent = diagnostic.message;
+
+  item.append(title, message);
+
+  const location = formatDiagnosticLocation(diagnostic);
+  if (location) {
+    const locationElement = document.createElement("span");
+    locationElement.className = "chatmusic-quality-location";
+    locationElement.textContent = location;
+    item.append(locationElement);
+  }
+
+  return item;
+}
+
+function formatDiagnosticLocation(diagnostic: AbcDiagnostic): string | null {
+  if (diagnostic.line === undefined) return null;
+  if (diagnostic.column === undefined) return `Line ${diagnostic.line}`;
+  return `Line ${diagnostic.line}, column ${diagnostic.column}`;
 }
 
 function setupCodeToggleButton(instance: RenderInstance): void {
@@ -551,6 +632,7 @@ function updateRender(
   instance.abcText = abcText;
   instance.visualObj = visualObj;
   setupKeyboard(instance);
+  updateQualityPanel(instance);
 
   // Re-initialize synth with new tune
   if (instance.synthControl) {
