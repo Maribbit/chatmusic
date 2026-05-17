@@ -149,6 +149,7 @@
 .chatmusic-tempo-button,
 .chatmusic-keyboard-toggle-button,
 .chatmusic-export-button,
+.chatmusic-midi-export-button,
 .chatmusic-studio-button,
 .chatmusic-code-toggle-button,
 .chatmusic-fullscreen-button {
@@ -187,6 +188,7 @@
 .chatmusic-keyboard-toggle-button:hover,
 .chatmusic-keyboard-toggle-button[aria-pressed="true"],
 .chatmusic-export-button:hover,
+.chatmusic-midi-export-button:hover,
 .chatmusic-studio-button:hover,
 .chatmusic-code-toggle-button:hover,
 .chatmusic-code-toggle-button[aria-pressed="true"],
@@ -199,6 +201,7 @@
 .chatmusic-tempo-button:focus-visible,
 .chatmusic-keyboard-toggle-button:focus-visible,
 .chatmusic-export-button:focus-visible,
+.chatmusic-midi-export-button:focus-visible,
 .chatmusic-studio-button:focus-visible,
 .chatmusic-code-toggle-button:focus-visible,
 .chatmusic-fullscreen-button:focus-visible {

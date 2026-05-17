@@ -1,3 +1,5 @@
+import { getAbcDownloadFilename } from "../shared/filename";
+
 export function getScoreSvg(scoreElement: HTMLElement): SVGSVGElement | null {
   const svg = scoreElement.querySelector("svg");
 
@@ -5,10 +7,7 @@ export function getScoreSvg(scoreElement: HTMLElement): SVGSVGElement | null {
 }
 
 export function getSvgDownloadFilename(abcText: string): string {
-  const title = /^T:\s*(.+)$/m.exec(abcText)?.[1]?.trim();
-  const baseName = title ? sanitizeFilename(title) : "chatmusic-score";
-
-  return `${baseName || "chatmusic-score"}.svg`;
+  return getAbcDownloadFilename(abcText, "svg");
 }
 
 export function serializeScoreSvg(svg: SVGSVGElement): string {
@@ -31,18 +30,4 @@ export function downloadSvg(svg: SVGSVGElement, filename: string): void {
   link.download = filename;
   link.click();
   URL.revokeObjectURL(url);
-}
-
-function sanitizeFilename(value: string): string {
-  return value
-    .split("")
-    .map((char) => (isUnsafeFilenameChar(char) ? " " : char))
-    .join("")
-    .replace(/\s+/g, " ")
-    .trim()
-    .slice(0, 80);
-}
-
-function isUnsafeFilenameChar(char: string): boolean {
-  return char.charCodeAt(0) < 32 || '<>:"/\\|?*'.includes(char);
 }

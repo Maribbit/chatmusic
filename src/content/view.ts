@@ -11,6 +11,7 @@ export interface RenderViewElements {
   tempoInputElement: HTMLInputElement;
   tempoBpmElement: HTMLElement;
   exportButton: HTMLButtonElement;
+  midiExportButton: HTMLButtonElement;
   studioButton: HTMLButtonElement;
   codeToggleButton: HTMLButtonElement;
   cleanup: () => void;
@@ -62,6 +63,9 @@ export function createRenderView(
     ) as HTMLElement,
     exportButton: container.querySelector(
       ".chatmusic-export-button"
+    ) as HTMLButtonElement,
+    midiExportButton: container.querySelector(
+      ".chatmusic-midi-export-button"
     ) as HTMLButtonElement,
     studioButton: container.querySelector(
       ".chatmusic-studio-button"
@@ -115,6 +119,13 @@ function renderContainerMarkup(): string {
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <path d="M14.5 4h-5L8 7H5a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-1.5-3z"/>
             <circle cx="12" cy="13" r="3"/>
+          </svg>
+        </button>
+        <button class="chatmusic-midi-export-button" type="button" title="Download MIDI" aria-label="Download MIDI">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M9 18V5l12-2v13"/>
+            <circle cx="6" cy="18" r="3"/>
+            <circle cx="18" cy="16" r="3"/>
           </svg>
         </button>
         <button class="chatmusic-studio-button" type="button" title="Open in Studio" aria-label="Open in Studio">

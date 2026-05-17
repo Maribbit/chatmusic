@@ -6,6 +6,10 @@ This project follows a lightweight [Keep a Changelog](https://keepachangelog.com
 
 ## [Unreleased]
 
+### Added
+
+- MIDI export from rendered score controls in chats and Studio.
+
 ## [0.2.0] - 2026-05-14
 
 ### Added

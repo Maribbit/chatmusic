@@ -15,6 +15,10 @@ import {
 } from "../shared/settings";
 import { getExtensionRuntime } from "../shared/extension-runtime";
 import { createOpenStudioMessage } from "../shared/messages";
+import {
+  downloadMidi,
+  getMidiDownloadFilename,
+} from "../shared/abc-midi-export";
 import { createDurationControl, type DurationControl } from "./duration-control";
 import { getTuneDurationSeconds } from "./duration";
 import {
@@ -43,6 +47,7 @@ export interface RenderInstance {
   tempoControl: TempoControl;
   durationControl: DurationControl;
   exportButton: HTMLButtonElement;
+  midiExportButton: HTMLButtonElement;
   studioButton: HTMLButtonElement;
   codeToggleButton: HTMLButtonElement;
   preElement: Element;
@@ -342,6 +347,7 @@ export function renderAbc(
     tempoControl,
     durationControl,
     exportButton: elements.exportButton,
+    midiExportButton: elements.midiExportButton,
     studioButton: elements.studioButton,
     codeToggleButton: elements.codeToggleButton,
     preElement,
@@ -360,6 +366,7 @@ export function renderAbc(
 
   setupCodeToggleButton(instance);
   setupExportButton(instance);
+  setupMidiExportButton(instance);
   setupStudioButton(instance);
   applyCodeBlockVisibility(instance, codeBlockVisibility);
   applyKeyboardVisibility(instance, keyboardVisibility);
@@ -424,6 +431,26 @@ function setupExportButton(instance: RenderInstance): void {
   instance.exportButton.addEventListener("click", exportScore);
   instance.cleanup = () => {
     instance.exportButton.removeEventListener("click", exportScore);
+    previousCleanup();
+  };
+}
+
+function setupMidiExportButton(instance: RenderInstance): void {
+  const exportMidi = () => {
+    const tune = instance.visualObj?.[0];
+    if (!tune) return;
+
+    try {
+      downloadMidi(tune, getMidiDownloadFilename(instance.abcText));
+    } catch (error) {
+      console.warn("[ChatMusic] MIDI export failed:", error);
+    }
+  };
+  const previousCleanup = instance.cleanup;
+
+  instance.midiExportButton.addEventListener("click", exportMidi);
+  instance.cleanup = () => {
+    instance.midiExportButton.removeEventListener("click", exportMidi);
     previousCleanup();
   };
 }
