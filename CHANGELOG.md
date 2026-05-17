@@ -10,7 +10,7 @@ This project follows a lightweight [Keep a Changelog](https://keepachangelog.com
 
 - MIDI export from rendered score controls in chats and Studio.
 - ABC source file import and export in Studio.
-- ABC source checking in Studio using abcjs parser warnings.
+- Automatic ABC source warning checks in Studio using abcjs parser warnings, with a toggle to turn auto-checking off.
 - MusicXML import in Studio for converting `.musicxml`, `.xml`, and compressed `.mxl` scores into ABC.
 
 ## [0.2.0] - 2026-05-14

@@ -1,9 +1,14 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
+  ABC_AUTO_CHECK_STORAGE_KEY,
   KEYBOARD_VISIBILITY_STORAGE_KEY,
   THEME_MODE_STORAGE_KEY,
 } from "../shared/settings";
-import { loadStudioSettings, saveStudioThemeMode } from "./settings-store";
+import {
+  loadStudioSettings,
+  saveStudioAbcAutoCheck,
+  saveStudioThemeMode,
+} from "./settings-store";
 
 function setChromeStorageMock(storage: {
   get: (keys: string[], callback: (items: Record<string, unknown>) => void) => void;
@@ -36,20 +41,24 @@ describe("Studio settings store", () => {
   it("loads settings from localStorage outside extension runtime", async () => {
     window.localStorage.setItem(THEME_MODE_STORAGE_KEY, "dark");
     window.localStorage.setItem(KEYBOARD_VISIBILITY_STORAGE_KEY, "hidden");
+    window.localStorage.setItem(ABC_AUTO_CHECK_STORAGE_KEY, "disabled");
 
     await expect(loadStudioSettings()).resolves.toEqual({
       themeMode: "dark",
       keyboardVisibility: "hidden",
+      abcAutoCheck: "disabled",
     });
   });
 
   it("falls back to defaults for invalid localStorage values", async () => {
     window.localStorage.setItem(THEME_MODE_STORAGE_KEY, "sepia");
     window.localStorage.setItem(KEYBOARD_VISIBILITY_STORAGE_KEY, "maybe");
+    window.localStorage.setItem(ABC_AUTO_CHECK_STORAGE_KEY, "maybe");
 
     await expect(loadStudioSettings()).resolves.toEqual({
       themeMode: "auto",
       keyboardVisibility: "visible",
+      abcAutoCheck: "enabled",
     });
   });
 
@@ -59,6 +68,7 @@ describe("Studio settings store", () => {
       callback({
         [THEME_MODE_STORAGE_KEY]: "light",
         [KEYBOARD_VISIBILITY_STORAGE_KEY]: "hidden",
+        [ABC_AUTO_CHECK_STORAGE_KEY]: "disabled",
       });
     });
     setChromeStorageMock({ get, set: vi.fn() });
@@ -66,9 +76,14 @@ describe("Studio settings store", () => {
     await expect(loadStudioSettings()).resolves.toEqual({
       themeMode: "light",
       keyboardVisibility: "hidden",
+      abcAutoCheck: "disabled",
     });
     expect(get).toHaveBeenCalledWith(
-      [THEME_MODE_STORAGE_KEY, KEYBOARD_VISIBILITY_STORAGE_KEY],
+      [
+        THEME_MODE_STORAGE_KEY,
+        KEYBOARD_VISIBILITY_STORAGE_KEY,
+        ABC_AUTO_CHECK_STORAGE_KEY,
+      ],
       expect.any(Function)
     );
   });
@@ -90,5 +105,26 @@ describe("Studio settings store", () => {
     await saveStudioThemeMode("dark");
 
     expect(window.localStorage.getItem(THEME_MODE_STORAGE_KEY)).toBe("dark");
+  });
+
+  it("saves ABC auto-check to extension storage when available", async () => {
+    const set = vi.fn();
+    setChromeStorageMock({
+      get: vi.fn(),
+      set,
+    });
+
+    await saveStudioAbcAutoCheck("disabled");
+
+    expect(set).toHaveBeenCalledWith({ [ABC_AUTO_CHECK_STORAGE_KEY]: "disabled" });
+    expect(window.localStorage.getItem(ABC_AUTO_CHECK_STORAGE_KEY)).toBeNull();
+  });
+
+  it("saves ABC auto-check to localStorage outside extension runtime", async () => {
+    await saveStudioAbcAutoCheck("disabled");
+
+    expect(window.localStorage.getItem(ABC_AUTO_CHECK_STORAGE_KEY)).toBe(
+      "disabled"
+    );
   });
 });

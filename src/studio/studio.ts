@@ -1,6 +1,7 @@
 import {
   DEFAULT_THEME_MODE,
   normalizeThemeMode,
+  type AbcAutoCheck,
   type KeyboardVisibility,
   type ThemeMode,
 } from "../shared/settings";
@@ -21,7 +22,11 @@ import {
   removeRender,
   type RenderInstance,
 } from "../content/renderer";
-import { loadStudioSettings, saveStudioThemeMode } from "./settings-store";
+import {
+  loadStudioSettings,
+  saveStudioAbcAutoCheck,
+  saveStudioThemeMode,
+} from "./settings-store";
 
 const STUDIO_SOURCE_STORAGE_KEY = "chatmusicStudioAbcText";
 const STUDIO_DESKTOP_SPLIT_STORAGE_KEY = "chatmusicStudioDesktopSplit";
@@ -57,6 +62,9 @@ const themeModeSelect = document.getElementById(
 const checkAbcButton = document.getElementById(
   "checkAbcButton"
 ) as HTMLButtonElement;
+const autoCheckInput = document.getElementById(
+  "autoCheckInput"
+) as HTMLInputElement;
 const copySourceButton = document.getElementById(
   "copySourceButton"
 ) as HTMLButtonElement;
@@ -85,6 +93,7 @@ const stackedLayoutQuery = window.matchMedia("(max-width: 860px)");
 let renderTimer: number | undefined;
 let currentInstance: RenderInstance | null = null;
 let currentKeyboardVisibility: KeyboardVisibility = "visible";
+let currentAbcAutoCheck: AbcAutoCheck = "enabled";
 let isResizing = false;
 
 void initializeStudio();
@@ -102,7 +111,9 @@ async function initializeStudio(): Promise<void> {
 
   const settings = await loadStudioSettings();
   currentKeyboardVisibility = settings.keyboardVisibility;
+  currentAbcAutoCheck = settings.abcAutoCheck;
   themeModeSelect.value = settings.themeMode;
+  autoCheckInput.checked = settings.abcAutoCheck === "enabled";
   applyStudioTheme(settings.themeMode);
 
   input.addEventListener("input", () => {
@@ -113,7 +124,12 @@ async function initializeStudio(): Promise<void> {
   });
 
   checkAbcButton.addEventListener("click", () => {
-    checkCurrentAbcSource();
+    checkCurrentAbcSource("manual");
+  });
+  autoCheckInput.addEventListener("change", () => {
+    void updateAbcAutoCheckSetting(
+      autoCheckInput.checked ? "enabled" : "disabled"
+    );
   });
   copySourceButton.addEventListener("click", () => {
     void copySourceToClipboard();
@@ -162,6 +178,21 @@ async function initializeStudio(): Promise<void> {
 
   updateSourceStats();
   renderCurrentInput();
+}
+
+async function updateAbcAutoCheckSetting(
+  abcAutoCheck: AbcAutoCheck
+): Promise<void> {
+  currentAbcAutoCheck = abcAutoCheck;
+  autoCheckInput.checked = abcAutoCheck === "enabled";
+  await saveStudioAbcAutoCheck(abcAutoCheck);
+
+  if (isAutoCheckEnabled()) {
+    checkCurrentAbcSource("auto");
+  } else {
+    hideQualityPanel();
+    renderStatus.textContent = "Auto check off";
+  }
 }
 
 function restoreSplitSizes(): void {
@@ -292,11 +323,25 @@ function updateSourceStats(): void {
   exportAbcButton.disabled = characterCount === 0;
 }
 
-function checkCurrentAbcSource(): void {
+function checkCurrentAbcSource(mode: "auto" | "manual"): void {
   const report = validateAbcSource(input.value);
+
+  if (mode === "auto" && report.status === "ok") {
+    hideQualityPanel();
+    return;
+  }
 
   renderQualityReport(report);
   renderStatus.textContent = getQualityStatusText(report);
+}
+
+function runAutoCheck(): void {
+  if (!isAutoCheckEnabled()) return;
+  checkCurrentAbcSource("auto");
+}
+
+function isAutoCheckEnabled(): boolean {
+  return currentAbcAutoCheck === "enabled";
 }
 
 function renderQualityReport(report: AbcQualityReport): void {
@@ -391,7 +436,7 @@ async function importSelectedAbcFile(): Promise<void> {
     const abcText = await importAbcFile(file);
     setInputValue(abcText);
     renderCurrentInput();
-    renderStatus.textContent = "Opened ABC";
+    setImportCompleteStatus("Opened ABC");
   } catch (error) {
     console.error("[ChatMusic Studio] ABC import failed:", error);
     renderStatus.textContent = getImportErrorMessage(error);
@@ -421,7 +466,7 @@ async function importSelectedMusicXmlFile(): Promise<void> {
     const abcText = await importMusicXmlFile(file);
     setInputValue(abcText);
     renderCurrentInput();
-    renderStatus.textContent = "Imported MusicXML";
+    setImportCompleteStatus("Imported MusicXML");
   } catch (error) {
     console.error("[ChatMusic Studio] MusicXML import failed:", error);
     renderStatus.textContent = getImportErrorMessage(error);
@@ -429,6 +474,10 @@ async function importSelectedMusicXmlFile(): Promise<void> {
     importMusicXmlButton.disabled = false;
     musicXmlInput.value = "";
   }
+}
+
+function setImportCompleteStatus(message: string): void {
+  if (qualityPanel.hidden) renderStatus.textContent = message;
 }
 
 function getImportErrorMessage(error: unknown): string {
@@ -470,6 +519,7 @@ function renderCurrentInput(): void {
     currentInstance.container.dataset.chatmusicLayout = "studio";
     renderMount.classList.add("has-render");
     renderStatus.textContent = "Rendered";
+    runAutoCheck();
   } catch (error) {
     console.error("[ChatMusic Studio] Render failed:", error);
     renderStatus.textContent = "Render failed";

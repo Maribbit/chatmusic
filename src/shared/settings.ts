@@ -4,11 +4,14 @@ export const DEFAULT_CODE_BLOCK_VISIBILITY = "expanded";
 export const CODE_BLOCK_VISIBILITY_STORAGE_KEY = "codeBlockVisibility";
 export const DEFAULT_KEYBOARD_VISIBILITY = "visible";
 export const KEYBOARD_VISIBILITY_STORAGE_KEY = "keyboardVisibility";
+export const DEFAULT_ABC_AUTO_CHECK = "enabled";
+export const ABC_AUTO_CHECK_STORAGE_KEY = "abcAutoCheck";
 
 export type ThemeMode = "auto" | "light" | "dark";
 export type ResolvedTheme = Exclude<ThemeMode, "auto">;
 export type CodeBlockVisibility = "expanded" | "collapsed";
 export type KeyboardVisibility = "visible" | "hidden";
+export type AbcAutoCheck = "enabled" | "disabled";
 
 export function isThemeMode(value: unknown): value is ThemeMode {
   return value === "auto" || value === "light" || value === "dark";
@@ -40,4 +43,12 @@ export function normalizeKeyboardVisibility(
   value: unknown
 ): KeyboardVisibility {
   return isKeyboardVisibility(value) ? value : DEFAULT_KEYBOARD_VISIBILITY;
+}
+
+export function isAbcAutoCheck(value: unknown): value is AbcAutoCheck {
+  return value === "enabled" || value === "disabled";
+}
+
+export function normalizeAbcAutoCheck(value: unknown): AbcAutoCheck {
+  return isAbcAutoCheck(value) ? value : DEFAULT_ABC_AUTO_CHECK;
 }

@@ -236,6 +236,21 @@ button {
   gap: 8px;
 }
 
+.auto-check-field {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--studio-muted);
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.auto-check-field input {
+  width: 14px;
+  height: 14px;
+  margin: 0;
+}
+
 .quality-panel {
   max-height: 128px;
   overflow: auto;
