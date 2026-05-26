@@ -4,15 +4,21 @@ All notable changes to ChatMusic are documented in this file.
 
 This project follows a lightweight [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) style. Extension releases use the same numeric version in `package.json` and `manifest.json`.
 
-## [Unreleased]
+## [0.3.0] - 2026-05-26
 
 ### Added
 
+- Independent Studio workspace (`src/studio`) for pasting, validating, and rendering ABC notation directly, with support for offline web deployment.
+- Virtual piano keyboard sound interaction (click-to-play) via built-in soundfont.
+- "Open in Studio" integration from content-script rendered scores to seamlessly move AI-generated music to the standalone editor.
 - MIDI export from rendered score controls in chats and Studio.
 - ABC source file import and export in Studio.
 - Automatic ABC source warning checks in Studio using abcjs parser warnings, with a toggle to turn auto-checking off.
 - Automatic ABC parser warning feedback in rendered score previews, with copyable repair prompts for AI chats.
 - MusicXML import in Studio for converting `.musicxml`, `.xml`, and compressed `.mxl` scores into ABC.
+
+### Changed
+- Web and extension dual-build architecture (`vite.web.config.ts`), allowing Studio to be hosted as a standalone website.
 
 ## [0.2.0] - 2026-05-14
 
