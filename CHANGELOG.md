@@ -9,6 +9,7 @@ This project follows a lightweight [Keep a Changelog](https://keepachangelog.com
 ### Added
 
 - Added "About ChatMusic" info dialog in Studio, featuring author information and handy links to MusicXML web converters.
+- Added a provider-based ABC detector architecture with DeepSeek and Gemini fixture coverage and detector contribution notes.
 - Rendered ABC scores now automatically wrap systems to the available score pane width, improving readability for long generated or converted ABC sources.
 - Studio now has a source editor line-wrap toggle for long ABC lines.
 - Studio playback now highlights the corresponding ABC source range while notes play.
