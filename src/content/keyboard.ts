@@ -1,3 +1,5 @@
+import { html, render, type TemplateResult } from "lit";
+
 export interface MidiPitch {
   pitch?: number;
 }
@@ -28,7 +30,7 @@ export function createKeyboardController(
   keyboardElement: HTMLElement,
   toggleButton: HTMLButtonElement,
   initialVisibility: boolean,
-  onPitchTrigger?: KeyboardPitchHandler
+  onPitchTrigger?: KeyboardPitchHandler,
 ): KeyboardController {
   let isVisible = initialVisibility;
   let focusStartPitch = MIDDLE_C_PITCH;
@@ -46,12 +48,15 @@ export function createKeyboardController(
 
   const scrollToFocusRange = () => {
     const startKey = keyboardElement.querySelector(
-      `[data-pitch="${focusStartPitch}"]`
+      `[data-pitch="${focusStartPitch}"]`,
     );
     const endKey = keyboardElement.querySelector(
-      `[data-pitch="${focusEndPitch}"]`
+      `[data-pitch="${focusEndPitch}"]`,
     );
-    if (!(startKey instanceof HTMLElement) || !(endKey instanceof HTMLElement)) {
+    if (
+      !(startKey instanceof HTMLElement) ||
+      !(endKey instanceof HTMLElement)
+    ) {
       return;
     }
 
@@ -70,38 +75,38 @@ export function createKeyboardController(
   const syncSize = () => {
     const availableWidth = Math.max(
       0,
-      keyboardElement.clientWidth - KEYBOARD_HORIZONTAL_PADDING
+      keyboardElement.clientWidth - KEYBOARD_HORIZONTAL_PADDING,
     );
     const whiteKeyWidth = Math.max(
       MIN_WHITE_KEY_WIDTH,
-      availableWidth / WHITE_KEY_COUNT
+      availableWidth / WHITE_KEY_COUNT,
     );
     const blackKeyWidth = whiteKeyWidth * 0.6;
     const whiteKeyHeight = Math.min(
       MAX_WHITE_KEY_HEIGHT,
-      Math.max(MIN_WHITE_KEY_HEIGHT, whiteKeyWidth * WHITE_KEY_HEIGHT_RATIO)
+      Math.max(MIN_WHITE_KEY_HEIGHT, whiteKeyWidth * WHITE_KEY_HEIGHT_RATIO),
     );
     const blackKeyHeight = whiteKeyHeight * 0.62;
 
     keyboardElement.style.setProperty(
       "--chatmusic-white-key-width",
-      `${whiteKeyWidth}px`
+      `${whiteKeyWidth}px`,
     );
     keyboardElement.style.setProperty(
       "--chatmusic-white-key-height",
-      `${whiteKeyHeight}px`
+      `${whiteKeyHeight}px`,
     );
     keyboardElement.style.setProperty(
       "--chatmusic-black-key-width",
-      `${blackKeyWidth}px`
+      `${blackKeyWidth}px`,
     );
     keyboardElement.style.setProperty(
       "--chatmusic-black-key-height",
-      `${blackKeyHeight}px`
+      `${blackKeyHeight}px`,
     );
     keyboardElement.style.setProperty(
       "--chatmusic-black-key-offset",
-      `${-blackKeyWidth / 2}px`
+      `${-blackKeyWidth / 2}px`,
     );
   };
 
@@ -119,31 +124,10 @@ export function createKeyboardController(
   const setup = (pitches: number[]) => {
     const tunePitches = new Set(pitches);
     clearAuditionKeys();
-    keyboardElement.replaceChildren();
+    render(renderKeyboardTemplate(tunePitches), keyboardElement);
     activeKeys = [];
     focusStartPitch = pitches[0] ?? MIDDLE_C_PITCH;
     focusEndPitch = pitches[pitches.length - 1] ?? MIDDLE_C_PITCH;
-
-    for (
-      let pitch = FULL_KEYBOARD_START_PITCH;
-      pitch <= FULL_KEYBOARD_END_PITCH;
-      pitch++
-    ) {
-      const key = document.createElement("div");
-      const isBlack = isBlackPianoKey(pitch);
-
-      key.className = `chatmusic-piano-key ${
-        isBlack ? "chatmusic-piano-key-black" : "chatmusic-piano-key-white"
-      }`;
-      if (tunePitches.has(pitch)) key.classList.add("chatmusic-key-in-tune");
-      if (pitch === MIDDLE_C_PITCH) key.classList.add("chatmusic-key-middle-c");
-      key.dataset.pitch = String(pitch);
-      key.dataset.note = getMidiNoteName(pitch);
-      key.title = getMidiNoteName(pitch);
-      key.setAttribute("role", "button");
-      key.setAttribute("aria-label", `Play ${getMidiNoteName(pitch)}`);
-      keyboardElement.append(key);
-    }
 
     syncSize();
     setVisible(isVisible);
@@ -163,7 +147,7 @@ export function createKeyboardController(
       if (midiPitch.pitch === undefined) continue;
 
       const key = keyboardElement.querySelector(
-        `[data-pitch="${midiPitch.pitch}"]`
+        `[data-pitch="${midiPitch.pitch}"]`,
       );
       if (key instanceof HTMLElement) {
         key.classList.add("chatmusic-key-active");
@@ -190,7 +174,7 @@ export function createKeyboardController(
       window.setTimeout(() => {
         key.classList.remove("chatmusic-key-auditioning");
         auditionTimers.delete(key);
-      }, AUDITION_HIGHLIGHT_MS)
+      }, AUDITION_HIGHLIGHT_MS),
     );
   };
 
@@ -198,7 +182,8 @@ export function createKeyboardController(
     if (!onPitchTrigger) return;
 
     const target = event.target;
-    const key = target instanceof Element ? target.closest(".chatmusic-piano-key") : null;
+    const key =
+      target instanceof Element ? target.closest(".chatmusic-piano-key") : null;
     if (!(key instanceof HTMLElement)) return;
 
     const pitch = Number(key.dataset.pitch);
@@ -235,6 +220,52 @@ export function createKeyboardController(
       resizeObserver?.disconnect();
     },
   };
+}
+
+function renderKeyboardTemplate(tunePitches: Set<number>): TemplateResult {
+  const pitches: number[] = [];
+
+  for (
+    let pitch = FULL_KEYBOARD_START_PITCH;
+    pitch <= FULL_KEYBOARD_END_PITCH;
+    pitch++
+  ) {
+    pitches.push(pitch);
+  }
+
+  return html`${pitches.map((pitch) => renderPianoKey(pitch, tunePitches))}`;
+}
+
+function renderPianoKey(
+  pitch: number,
+  tunePitches: Set<number>,
+): TemplateResult {
+  const noteName = getMidiNoteName(pitch);
+
+  return html`
+    <div
+      class=${getPianoKeyClassName(pitch, tunePitches)}
+      data-pitch=${String(pitch)}
+      data-note=${noteName}
+      title=${noteName}
+      role="button"
+      aria-label=${`Play ${noteName}`}
+    ></div>
+  `;
+}
+
+function getPianoKeyClassName(pitch: number, tunePitches: Set<number>): string {
+  const classNames = [
+    "chatmusic-piano-key",
+    isBlackPianoKey(pitch)
+      ? "chatmusic-piano-key-black"
+      : "chatmusic-piano-key-white",
+  ];
+
+  if (tunePitches.has(pitch)) classNames.push("chatmusic-key-in-tune");
+  if (pitch === MIDDLE_C_PITCH) classNames.push("chatmusic-key-middle-c");
+
+  return classNames.join(" ");
 }
 
 function isBlackPianoKey(pitch: number): boolean {

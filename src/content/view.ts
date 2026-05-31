@@ -1,3 +1,5 @@
+import { html, render, svg, type TemplateResult } from "lit";
+import type { AbcDiagnostic } from "../shared/abc-quality/diagnostics";
 import type { ThemeMode } from "../shared/settings";
 import { resolveTheme } from "./theme";
 
@@ -24,7 +26,7 @@ export interface RenderViewElements {
 export function createRenderView(
   preElement: Element,
   themeMode: ThemeMode,
-  shadowStyles: string
+  shadowStyles: string,
 ): RenderViewElements {
   const host = document.createElement("div");
   host.className = "chatmusic-host";
@@ -36,10 +38,10 @@ export function createRenderView(
 
   const container = document.createElement("div");
   container.className = "chatmusic-container";
-  container.innerHTML = renderContainerMarkup();
+  render(renderContainerTemplate(), container);
 
   const fullscreenButton = container.querySelector(
-    ".chatmusic-fullscreen-button"
+    ".chatmusic-fullscreen-button",
   ) as HTMLButtonElement;
   const cleanup = setupFullscreenButton(host, fullscreenButton);
 
@@ -50,44 +52,44 @@ export function createRenderView(
     container: host,
     scoreElement: container.querySelector(".chatmusic-score") as HTMLElement,
     keyboardElement: container.querySelector(
-      ".chatmusic-keyboard"
+      ".chatmusic-keyboard",
     ) as HTMLElement,
     keyboardToggleButton: container.querySelector(
-      ".chatmusic-keyboard-toggle-button"
+      ".chatmusic-keyboard-toggle-button",
     ) as HTMLButtonElement,
     audioElement: container.querySelector(".chatmusic-audio") as HTMLElement,
     qualityPanelElement: container.querySelector(
-      ".chatmusic-quality-panel"
+      ".chatmusic-quality-panel",
     ) as HTMLElement,
     qualitySummaryElement: container.querySelector(
-      ".chatmusic-quality-summary"
+      ".chatmusic-quality-summary",
     ) as HTMLElement,
     qualityListElement: container.querySelector(
-      ".chatmusic-quality-list"
+      ".chatmusic-quality-list",
     ) as HTMLElement,
     qualityCopyButton: container.querySelector(
-      ".chatmusic-quality-copy-button"
+      ".chatmusic-quality-copy-button",
     ) as HTMLButtonElement,
     tempoMenuElement: container.querySelector(
-      ".chatmusic-tempo-menu"
+      ".chatmusic-tempo-menu",
     ) as HTMLElement,
     tempoInputElement: container.querySelector(
-      ".chatmusic-tempo-input"
+      ".chatmusic-tempo-input",
     ) as HTMLInputElement,
     tempoBpmElement: container.querySelector(
-      ".chatmusic-tempo-bpm-value"
+      ".chatmusic-tempo-bpm-value",
     ) as HTMLElement,
     exportButton: container.querySelector(
-      ".chatmusic-export-button"
+      ".chatmusic-export-button",
     ) as HTMLButtonElement,
     midiExportButton: container.querySelector(
-      ".chatmusic-midi-export-button"
+      ".chatmusic-midi-export-button",
     ) as HTMLButtonElement,
     studioButton: container.querySelector(
-      ".chatmusic-studio-button"
+      ".chatmusic-studio-button",
     ) as HTMLButtonElement,
     codeToggleButton: container.querySelector(
-      ".chatmusic-code-toggle-button"
+      ".chatmusic-code-toggle-button",
     ) as HTMLButtonElement,
     cleanup,
   };
@@ -96,7 +98,7 @@ export function createRenderView(
 export function applyRenderViewTheme(
   host: HTMLElement,
   preElement: Element,
-  themeMode: ThemeMode
+  themeMode: ThemeMode,
 ): void {
   const resolvedTheme = resolveTheme(preElement, themeMode);
 
@@ -105,20 +107,52 @@ export function applyRenderViewTheme(
   host.style.colorScheme = resolvedTheme;
 }
 
-function renderContainerMarkup(): string {
-  return `
+export function renderQualityDiagnostics(
+  listElement: HTMLElement,
+  diagnostics: AbcDiagnostic[],
+): void {
+  render(
+    html`${diagnostics.map((diagnostic) => {
+      const location = formatDiagnosticLocation(diagnostic);
+
+      return html`
+        <li class="chatmusic-quality-item">
+          <span class="chatmusic-quality-title">
+            ${diagnostic.severity.toUpperCase()}: ${diagnostic.title}
+          </span>
+          <span>${diagnostic.message}</span>
+          ${location
+            ? html`<span class="chatmusic-quality-location">${location}</span>`
+            : null}
+        </li>
+      `;
+    })}`,
+    listElement,
+  );
+}
+
+export function clearQualityDiagnostics(listElement: HTMLElement): void {
+  render(null, listElement);
+}
+
+function formatDiagnosticLocation(diagnostic: AbcDiagnostic): string | null {
+  if (diagnostic.line === undefined) return null;
+  if (diagnostic.column === undefined) return `Line ${diagnostic.line}`;
+  return `Line ${diagnostic.line}, column ${diagnostic.column}`;
+}
+
+function renderContainerTemplate(): TemplateResult {
+  return html`
     <div class="chatmusic-header">
       <span class="chatmusic-label">ChatMusic</span>
       <div class="chatmusic-header-actions">
         <details class="chatmusic-tempo-menu" hidden>
-          <summary class="chatmusic-tempo-button" title="Tempo" aria-label="Tempo">
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M7 21L9.6 4.2A2 2 0 0 1 11.5 2h1A2 2 0 0 1 14.4 4.2L17 21" />
-              <path d="M5 21h14" />
-              <path d="M9 13v-1 M15 13v-1" />
-              <path d="M12 21V8" />
-              <circle cx="12" cy="13.5" r="1.5" fill="currentColor" stroke="none" />
-            </svg>
+          <summary
+            class="chatmusic-tempo-button"
+            title="Tempo"
+            aria-label="Tempo"
+          >
+            ${renderTempoIcon()}
           </summary>
           <div class="chatmusic-tempo-panel">
             <div class="chatmusic-tempo-readout" aria-live="polite">
@@ -126,52 +160,77 @@ function renderContainerMarkup(): string {
               <span class="chatmusic-tempo-unit">BPM</span>
             </div>
             <label class="chatmusic-tempo-field">
-              <input class="chatmusic-tempo-input" type="number" min="1" max="300" value="100" aria-label="Playback speed">
+              <input
+                class="chatmusic-tempo-input"
+                type="number"
+                min="1"
+                max="300"
+                value="100"
+                aria-label="Playback speed"
+              />
               <span>%</span>
             </label>
           </div>
         </details>
-        <button class="chatmusic-export-button" type="button" title="Download score image" aria-label="Download score image">
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M14.5 4h-5L8 7H5a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-1.5-3z"/>
-            <circle cx="12" cy="13" r="3"/>
-          </svg>
+        <button
+          class="chatmusic-export-button"
+          type="button"
+          title="Download score image"
+          aria-label="Download score image"
+        >
+          ${renderCameraIcon()}
         </button>
-        <button class="chatmusic-midi-export-button" type="button" title="Download MIDI" aria-label="Download MIDI">
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M9 18V5l12-2v13"/>
-            <circle cx="6" cy="18" r="3"/>
-            <circle cx="18" cy="16" r="3"/>
-          </svg>
+        <button
+          class="chatmusic-midi-export-button"
+          type="button"
+          title="Download MIDI"
+          aria-label="Download MIDI"
+        >
+          ${renderMusicIcon()}
         </button>
-        <button class="chatmusic-studio-button" type="button" title="Open in Studio" aria-label="Open in Studio">
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M15 3h6v6"/><path d="M10 14 21 3"/><path d="M21 14v5a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5"/>
-          </svg>
+        <button
+          class="chatmusic-studio-button"
+          type="button"
+          title="Open in Studio"
+          aria-label="Open in Studio"
+        >
+          ${renderExternalLinkIcon()}
         </button>
-        <button class="chatmusic-fullscreen-button" type="button" title="Enter fullscreen" aria-label="Enter fullscreen" aria-pressed="false">
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M8 3H5a2 2 0 0 0-2 2v3"/><path d="M21 8V5a2 2 0 0 0-2-2h-3"/><path d="M3 16v3a2 2 0 0 0 2 2h3"/><path d="M16 21h3a2 2 0 0 0 2-2v-3"/>
-          </svg>
+        <button
+          class="chatmusic-fullscreen-button"
+          type="button"
+          title="Enter fullscreen"
+          aria-label="Enter fullscreen"
+          aria-pressed="false"
+        >
+          ${renderFullscreenIcon()}
         </button>
-        <button class="chatmusic-keyboard-toggle-button" type="button" title="Hide keyboard" aria-label="Hide keyboard" aria-pressed="true">
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M4 6h16a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2z"/>
-            <path d="M8 6v8 M12 6v8 M16 6v8"/>
-            <path d="M6 14h12"/>
-          </svg>
+        <button
+          class="chatmusic-keyboard-toggle-button"
+          type="button"
+          title="Hide keyboard"
+          aria-label="Hide keyboard"
+          aria-pressed="true"
+        >
+          ${renderKeyboardIcon()}
         </button>
-        <button class="chatmusic-code-toggle-button" type="button" title="Hide source code" aria-label="Hide source code" aria-pressed="true">
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="m18 16 4-4-4-4"/><path d="m6 8-4 4 4 4"/><path d="m14.5 4-5 16"/>
-          </svg>
+        <button
+          class="chatmusic-code-toggle-button"
+          type="button"
+          title="Hide source code"
+          aria-label="Hide source code"
+          aria-pressed="true"
+        >
+          ${renderCodeIcon()}
         </button>
       </div>
     </div>
     <div class="chatmusic-quality-panel" aria-live="polite" hidden>
       <div class="chatmusic-quality-header">
         <strong class="chatmusic-quality-summary"></strong>
-        <button class="chatmusic-quality-copy-button" type="button">Copy feedback</button>
+        <button class="chatmusic-quality-copy-button" type="button">
+          Copy feedback
+        </button>
       </div>
       <ul class="chatmusic-quality-list"></ul>
     </div>
@@ -181,9 +240,88 @@ function renderContainerMarkup(): string {
   `;
 }
 
+function renderIcon(paths: TemplateResult): TemplateResult {
+  return svg`
+    <svg
+      width="15"
+      height="15"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      stroke-width="2"
+      stroke-linecap="round"
+      stroke-linejoin="round"
+    >
+      ${paths}
+    </svg>
+  `;
+}
+
+function renderTempoIcon(): TemplateResult {
+  return renderIcon(svg`
+    <path d="M7 21L9.6 4.2A2 2 0 0 1 11.5 2h1A2 2 0 0 1 14.4 4.2L17 21" />
+    <path d="M5 21h14" />
+    <path d="M9 13v-1 M15 13v-1" />
+    <path d="M12 21V8" />
+    <circle cx="12" cy="13.5" r="1.5" fill="currentColor" stroke="none" />
+  `);
+}
+
+function renderCameraIcon(): TemplateResult {
+  return renderIcon(svg`
+    <path
+      d="M14.5 4h-5L8 7H5a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-1.5-3z"
+    />
+    <circle cx="12" cy="13" r="3" />
+  `);
+}
+
+function renderMusicIcon(): TemplateResult {
+  return renderIcon(svg`
+    <path d="M9 18V5l12-2v13" />
+    <circle cx="6" cy="18" r="3" />
+    <circle cx="18" cy="16" r="3" />
+  `);
+}
+
+function renderExternalLinkIcon(): TemplateResult {
+  return renderIcon(svg`
+    <path d="M15 3h6v6" />
+    <path d="M10 14 21 3" />
+    <path d="M21 14v5a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5" />
+  `);
+}
+
+function renderFullscreenIcon(): TemplateResult {
+  return renderIcon(svg`
+    <path d="M8 3H5a2 2 0 0 0-2 2v3" />
+    <path d="M21 8V5a2 2 0 0 0-2-2h-3" />
+    <path d="M3 16v3a2 2 0 0 0 2 2h3" />
+    <path d="M16 21h3a2 2 0 0 0 2-2v-3" />
+  `);
+}
+
+function renderKeyboardIcon(): TemplateResult {
+  return renderIcon(svg`
+    <path
+      d="M4 6h16a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2z"
+    />
+    <path d="M8 6v8 M12 6v8 M16 6v8" />
+    <path d="M6 14h12" />
+  `);
+}
+
+function renderCodeIcon(): TemplateResult {
+  return renderIcon(svg`
+    <path d="m18 16 4-4-4-4" />
+    <path d="m6 8-4 4 4 4" />
+    <path d="m14.5 4-5 16" />
+  `);
+}
+
 function setupFullscreenButton(
   host: HTMLElement,
-  button: HTMLButtonElement
+  button: HTMLButtonElement,
 ): () => void {
   if (!document.fullscreenEnabled || !host.requestFullscreen) {
     button.hidden = true;

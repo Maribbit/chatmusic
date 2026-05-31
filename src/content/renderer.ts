@@ -13,7 +13,6 @@ import {
   type KeyboardVisibility,
   type ThemeMode,
 } from "../shared/settings";
-import type { AbcDiagnostic } from "../shared/abc-quality/diagnostics";
 import {
   formatAbcQualityReportForAi,
   validateAbcSource,
@@ -37,7 +36,12 @@ import {
 import { downloadSvg, getScoreSvg, getSvgDownloadFilename } from "./svg-export";
 import { getLocalPianoSynthOptions, playLocalPianoPitch } from "./soundfont";
 import { createTempoControl, type TempoControl } from "./tempo-control";
-import { applyRenderViewTheme, createRenderView } from "./view";
+import {
+  applyRenderViewTheme,
+  clearQualityDiagnostics,
+  createRenderView,
+  renderQualityDiagnostics,
+} from "./view";
 
 export interface RenderInstance {
   container: HTMLElement;
@@ -473,45 +477,13 @@ function updateQualityPanel(instance: RenderInstance): void {
 
   if (report.status === "ok") {
     instance.qualityPanelElement.hidden = true;
-    instance.qualityListElement.replaceChildren();
+    clearQualityDiagnostics(instance.qualityListElement);
     return;
   }
 
   instance.qualityPanelElement.hidden = false;
   instance.qualitySummaryElement.textContent = `${report.diagnostics.length} ABC parser issue${report.diagnostics.length === 1 ? "" : "s"} found.`;
-  instance.qualityListElement.replaceChildren(
-    ...report.diagnostics.map(createQualityDiagnosticItem),
-  );
-}
-
-function createQualityDiagnosticItem(diagnostic: AbcDiagnostic): HTMLElement {
-  const item = document.createElement("li");
-  item.className = "chatmusic-quality-item";
-
-  const title = document.createElement("span");
-  title.className = "chatmusic-quality-title";
-  title.textContent = `${diagnostic.severity.toUpperCase()}: ${diagnostic.title}`;
-
-  const message = document.createElement("span");
-  message.textContent = diagnostic.message;
-
-  item.append(title, message);
-
-  const location = formatDiagnosticLocation(diagnostic);
-  if (location) {
-    const locationElement = document.createElement("span");
-    locationElement.className = "chatmusic-quality-location";
-    locationElement.textContent = location;
-    item.append(locationElement);
-  }
-
-  return item;
-}
-
-function formatDiagnosticLocation(diagnostic: AbcDiagnostic): string | null {
-  if (diagnostic.line === undefined) return null;
-  if (diagnostic.column === undefined) return `Line ${diagnostic.line}`;
-  return `Line ${diagnostic.line}, column ${diagnostic.column}`;
+  renderQualityDiagnostics(instance.qualityListElement, report.diagnostics);
 }
 
 function setupCodeToggleButton(instance: RenderInstance): void {

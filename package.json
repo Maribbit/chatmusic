@@ -31,7 +31,8 @@
   "license": "MIT",
   "dependencies": {
     "abcjs": "^6.6.3",
-    "fflate": "^0.8.3"
+    "fflate": "^0.8.3",
+    "lit": "^3.3.3"
   },
   "devDependencies": {
     "@crxjs/vite-plugin": "^2.4.0",
