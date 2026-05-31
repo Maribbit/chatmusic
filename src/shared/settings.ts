@@ -6,9 +6,13 @@ export const DEFAULT_KEYBOARD_VISIBILITY = "visible";
 export const KEYBOARD_VISIBILITY_STORAGE_KEY = "keyboardVisibility";
 export const DEFAULT_ABC_AUTO_CHECK = "enabled";
 export const ABC_AUTO_CHECK_STORAGE_KEY = "abcAutoCheck";
+export const DEFAULT_LAYOUT_MODE = "auto";
+export const LAYOUT_MODE_STORAGE_KEY = "layoutMode";
 
 export type ThemeMode = "auto" | "light" | "dark";
 export type ResolvedTheme = Exclude<ThemeMode, "auto">;
+export type LayoutMode = "auto" | "horizontal" | "vertical";
+export type ResolvedLayout = Exclude<LayoutMode, "auto">;
 export type CodeBlockVisibility = "expanded" | "collapsed";
 export type KeyboardVisibility = "visible" | "hidden";
 export type AbcAutoCheck = "enabled" | "disabled";
@@ -21,26 +25,34 @@ export function normalizeThemeMode(value: unknown): ThemeMode {
   return isThemeMode(value) ? value : DEFAULT_THEME_MODE;
 }
 
+export function isLayoutMode(value: unknown): value is LayoutMode {
+  return value === "auto" || value === "horizontal" || value === "vertical";
+}
+
+export function normalizeLayoutMode(value: unknown): LayoutMode {
+  return isLayoutMode(value) ? value : DEFAULT_LAYOUT_MODE;
+}
+
 export function isCodeBlockVisibility(
-  value: unknown
+  value: unknown,
 ): value is CodeBlockVisibility {
   return value === "expanded" || value === "collapsed";
 }
 
 export function normalizeCodeBlockVisibility(
-  value: unknown
+  value: unknown,
 ): CodeBlockVisibility {
   return isCodeBlockVisibility(value) ? value : DEFAULT_CODE_BLOCK_VISIBILITY;
 }
 
 export function isKeyboardVisibility(
-  value: unknown
+  value: unknown,
 ): value is KeyboardVisibility {
   return value === "visible" || value === "hidden";
 }
 
 export function normalizeKeyboardVisibility(
-  value: unknown
+  value: unknown,
 ): KeyboardVisibility {
   return isKeyboardVisibility(value) ? value : DEFAULT_KEYBOARD_VISIBILITY;
 }

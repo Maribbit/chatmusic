@@ -11,7 +11,10 @@ import {
 } from "./settings-store";
 
 function setChromeStorageMock(storage: {
-  get: (keys: string[], callback: (items: Record<string, unknown>) => void) => void;
+  get: (
+    keys: string[],
+    callback: (items: Record<string, unknown>) => void,
+  ) => void;
   set: (items: Record<string, unknown>) => void | Promise<void>;
 }): void {
   Object.defineProperty(globalThis, "chrome", {
@@ -45,6 +48,7 @@ describe("Studio settings store", () => {
 
     await expect(loadStudioSettings()).resolves.toEqual({
       themeMode: "dark",
+      layoutMode: "auto",
       keyboardVisibility: "hidden",
       abcAutoCheck: "disabled",
     });
@@ -54,9 +58,11 @@ describe("Studio settings store", () => {
     window.localStorage.setItem(THEME_MODE_STORAGE_KEY, "sepia");
     window.localStorage.setItem(KEYBOARD_VISIBILITY_STORAGE_KEY, "maybe");
     window.localStorage.setItem(ABC_AUTO_CHECK_STORAGE_KEY, "maybe");
+    window.localStorage.setItem("layoutMode", "diagonal");
 
     await expect(loadStudioSettings()).resolves.toEqual({
       themeMode: "auto",
+      layoutMode: "auto",
       keyboardVisibility: "visible",
       abcAutoCheck: "enabled",
     });
@@ -65,26 +71,30 @@ describe("Studio settings store", () => {
   it("loads settings from extension storage when available", async () => {
     const get = vi.fn(
       (_keys: string[], callback: (items: Record<string, unknown>) => void) => {
-      callback({
-        [THEME_MODE_STORAGE_KEY]: "light",
-        [KEYBOARD_VISIBILITY_STORAGE_KEY]: "hidden",
-        [ABC_AUTO_CHECK_STORAGE_KEY]: "disabled",
-      });
-    });
+        callback({
+          [THEME_MODE_STORAGE_KEY]: "light",
+          layoutMode: "horizontal",
+          [KEYBOARD_VISIBILITY_STORAGE_KEY]: "hidden",
+          [ABC_AUTO_CHECK_STORAGE_KEY]: "disabled",
+        });
+      },
+    );
     setChromeStorageMock({ get, set: vi.fn() });
 
     await expect(loadStudioSettings()).resolves.toEqual({
       themeMode: "light",
+      layoutMode: "horizontal",
       keyboardVisibility: "hidden",
       abcAutoCheck: "disabled",
     });
     expect(get).toHaveBeenCalledWith(
       [
         THEME_MODE_STORAGE_KEY,
+        "layoutMode",
         KEYBOARD_VISIBILITY_STORAGE_KEY,
         ABC_AUTO_CHECK_STORAGE_KEY,
       ],
-      expect.any(Function)
+      expect.any(Function),
     );
   });
 
@@ -116,7 +126,9 @@ describe("Studio settings store", () => {
 
     await saveStudioAbcAutoCheck("disabled");
 
-    expect(set).toHaveBeenCalledWith({ [ABC_AUTO_CHECK_STORAGE_KEY]: "disabled" });
+    expect(set).toHaveBeenCalledWith({
+      [ABC_AUTO_CHECK_STORAGE_KEY]: "disabled",
+    });
     expect(window.localStorage.getItem(ABC_AUTO_CHECK_STORAGE_KEY)).toBeNull();
   });
 
@@ -124,7 +136,7 @@ describe("Studio settings store", () => {
     await saveStudioAbcAutoCheck("disabled");
 
     expect(window.localStorage.getItem(ABC_AUTO_CHECK_STORAGE_KEY)).toBe(
-      "disabled"
+      "disabled",
     );
   });
 });

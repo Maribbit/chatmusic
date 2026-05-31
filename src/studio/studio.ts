@@ -1,9 +1,11 @@
 import {
   DEFAULT_THEME_MODE,
   normalizeThemeMode,
+  normalizeLayoutMode,
   type AbcAutoCheck,
   type KeyboardVisibility,
   type ThemeMode,
+  type LayoutMode,
 } from "../shared/settings";
 import type {
   AbcDiagnostic,
@@ -25,6 +27,7 @@ import {
   loadStudioSettings,
   saveStudioAbcAutoCheck,
   saveStudioThemeMode,
+  saveStudioLayoutMode,
 } from "./settings-store";
 
 const STUDIO_SOURCE_STORAGE_KEY = "chatmusicStudioAbcText";
@@ -55,9 +58,12 @@ const studioResizer = document.getElementById("studioResizer") as HTMLElement;
 const sourceStats = document.getElementById("sourceStats") as HTMLElement;
 const renderStatus = document.getElementById("renderStatus") as HTMLElement;
 const qualityPanel = document.getElementById("qualityPanel") as HTMLElement;
-const themeModeSelect = document.getElementById(
-  "themeModeSelect",
-) as HTMLSelectElement;
+const themeModeForm = document.getElementById(
+  "themeModeForm",
+) as HTMLFormElement;
+const layoutModeForm = document.getElementById(
+  "layoutModeForm",
+) as HTMLFormElement;
 const autoCheckInput = document.getElementById(
   "autoCheckInput",
 ) as HTMLInputElement;
@@ -84,6 +90,7 @@ let renderTimer: number | undefined;
 let currentInstance: RenderInstance | null = null;
 let currentKeyboardVisibility: KeyboardVisibility = "visible";
 let currentAbcAutoCheck: AbcAutoCheck = "enabled";
+let explicitLayoutMode: LayoutMode = "auto";
 let isResizing = false;
 
 void initializeStudio();
@@ -102,9 +109,13 @@ async function initializeStudio(): Promise<void> {
   const settings = await loadStudioSettings();
   currentKeyboardVisibility = settings.keyboardVisibility;
   currentAbcAutoCheck = settings.abcAutoCheck;
-  themeModeSelect.value = settings.themeMode;
+  themeModeForm.themeMode.value = settings.themeMode;
+  layoutModeForm.layoutMode.value = settings.layoutMode;
+  explicitLayoutMode = settings.layoutMode;
+
   autoCheckInput.checked = settings.abcAutoCheck === "enabled";
   applyStudioTheme(settings.themeMode);
+  applyStudioLayoutMode(settings.layoutMode);
 
   input.addEventListener("input", () => {
     updateSourceStats();
@@ -140,11 +151,19 @@ async function initializeStudio(): Promise<void> {
     renderCurrentInput();
     input.focus();
   });
-  themeModeSelect.addEventListener("change", async () => {
-    const themeMode = normalizeThemeMode(themeModeSelect.value);
+  themeModeForm.addEventListener("change", async () => {
+    const themeMode = normalizeThemeMode(themeModeForm.themeMode.value);
     applyStudioTheme(themeMode);
     await saveStudioThemeMode(themeMode);
     renderCurrentInput();
+  });
+  layoutModeForm.addEventListener("change", async () => {
+    const layoutMode = normalizeLayoutMode(layoutModeForm.layoutMode.value);
+    explicitLayoutMode = layoutMode;
+    applyStudioLayoutMode(layoutMode);
+    updateResizerOrientation();
+    await saveStudioLayoutMode(layoutMode);
+    window.requestAnimationFrame(clampRestoredSplitSize);
   });
   colorSchemeQuery.addEventListener("change", () => {
     if (getSelectedThemeMode() === "auto") {
@@ -152,7 +171,12 @@ async function initializeStudio(): Promise<void> {
       renderCurrentInput();
     }
   });
-  stackedLayoutQuery.addEventListener("change", updateResizerOrientation);
+  stackedLayoutQuery.addEventListener("change", () => {
+    if (explicitLayoutMode === "auto") {
+      updateResizerOrientation();
+      window.requestAnimationFrame(clampRestoredSplitSize);
+    }
+  });
   studioResizer.addEventListener("pointerdown", startResize);
   studioResizer.addEventListener("keydown", handleResizerKeydown);
   window.addEventListener("pointermove", resizeFromPointer);
@@ -274,6 +298,8 @@ function setMobileEditorHeight(height: number): void {
 }
 
 function isStackedLayout(): boolean {
+  if (explicitLayoutMode === "vertical") return true;
+  if (explicitLayoutMode === "horizontal") return false;
   return stackedLayoutQuery.matches;
 }
 
@@ -485,7 +511,9 @@ function renderCurrentInput(): void {
 }
 
 function getSelectedThemeMode(): ThemeMode {
-  return normalizeThemeMode(themeModeSelect.value || DEFAULT_THEME_MODE);
+  return normalizeThemeMode(
+    themeModeForm.themeMode.value || DEFAULT_THEME_MODE,
+  );
 }
 
 function applyStudioTheme(themeMode: ThemeMode): void {
@@ -498,4 +526,16 @@ function applyStudioTheme(themeMode: ThemeMode): void {
 
   document.documentElement.dataset.theme = resolvedTheme;
   document.documentElement.dataset.themeMode = themeMode;
+}
+
+function applyStudioLayoutMode(layoutMode: LayoutMode): void {
+  if (layoutMode === "horizontal") {
+    studioShell.classList.add("layout-split");
+    studioShell.classList.remove("layout-stacked");
+  } else if (layoutMode === "vertical") {
+    studioShell.classList.add("layout-stacked");
+    studioShell.classList.remove("layout-split");
+  } else {
+    studioShell.classList.remove("layout-split", "layout-stacked");
+  }
 }

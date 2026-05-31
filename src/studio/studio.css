@@ -126,21 +126,54 @@ button {
   gap: 6px;
 }
 
-.studio-theme-field {
+.segmented-control {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
-  color: var(--studio-muted);
-  font-size: 13px;
-}
-
-.studio-theme-field select {
-  width: 92px;
-  padding: 0 28px 0 10px;
+  background: var(--studio-bg);
   border: 1px solid var(--studio-border);
   border-radius: 6px;
-  background: var(--studio-panel);
-  color: var(--studio-text);
+  padding: 2px;
+  gap: 2px;
+  margin: 0;
+}
+
+.segmented-control label {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 24px;
+  border-radius: 4px;
+  cursor: pointer;
+  color: var(--studio-muted);
+  transition: all 0.15s ease-out;
+}
+
+.segmented-control label:hover {
+  color: var(--studio-text-strong);
+}
+
+.segmented-control input[type="radio"] {
+  position: absolute;
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.segmented-control input[type="radio"]:checked + svg {
+  color: var(--studio-text-strong);
+}
+
+.segmented-control label:has(input[type="radio"]:checked) {
+  background: var(--studio-surface);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+  cursor: default;
+}
+
+.segmented-control input[type="radio"]:focus-visible + svg {
+  outline: 2px solid var(--studio-focus-ring);
+  border-radius: 2px;
 }
 
 .secondary-button {
@@ -475,7 +508,7 @@ button {
     overflow: hidden;
   }
 
-  .studio-shell {
+  .studio-shell:not(.layout-split) {
     grid-template-columns: 1fr;
     grid-template-rows: auto minmax(160px, var(--studio-editor-mobile-size)) 6px minmax(220px, 1fr);
     min-height: 0;
@@ -483,7 +516,7 @@ button {
   }
 
   .studio-header {
-    grid-column: 1;
+    grid-column: 1 / -1;
     grid-row: 1;
     align-items: center;
     flex-direction: row;
@@ -496,37 +529,58 @@ button {
     justify-content: flex-end;
   }
 
-  .studio-theme-field {
-    gap: 6px;
-  }
-
-  .studio-theme-field select {
-    width: 84px;
-  }
-
   .secondary-button {
     padding: 0 10px;
   }
 
-  .editor-pane {
+  .studio-shell:not(.layout-split) .editor-pane {
     grid-column: 1;
     grid-row: 2;
     border-right: 0;
   }
 
-  .studio-resizer {
+  .studio-shell:not(.layout-split) .studio-resizer {
     grid-column: 1;
     grid-row: 3;
     cursor: row-resize;
   }
 
-  .studio-resizer::after {
+  .studio-shell:not(.layout-split) .studio-resizer::after {
     width: 36px;
     height: 2px;
   }
 
-  .preview-pane {
+  .studio-shell:not(.layout-split) .preview-pane {
     grid-column: 1;
     grid-row: 4;
   }
+}
+
+.studio-shell.layout-stacked {
+  grid-template-columns: 1fr;
+  grid-template-rows: auto minmax(160px, var(--studio-editor-mobile-size)) 6px minmax(220px, 1fr);
+  min-height: 0;
+  height: 100%;
+}
+
+.studio-shell.layout-stacked .editor-pane {
+  grid-column: 1;
+  grid-row: 2;
+  border-right: 0;
+}
+
+.studio-shell.layout-stacked .studio-resizer {
+  grid-column: 1;
+  grid-row: 3;
+  cursor: row-resize;
+}
+
+.studio-shell.layout-stacked .studio-resizer::after {
+  width: 36px;
+  height: 2px;
+}
+
+.studio-shell.layout-stacked .preview-pane {
+  grid-column: 1;
+  grid-row: 4;
 }
