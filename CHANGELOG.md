@@ -6,6 +6,8 @@ This project follows a lightweight [Keep a Changelog](https://keepachangelog.com
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-05-31
+
 ### Added
 
 - Added "About ChatMusic" info dialog in Studio, featuring author information and handy links to MusicXML web converters.
