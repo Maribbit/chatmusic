@@ -18,19 +18,20 @@ import {
 } from "../shared/settings";
 
 const toggle = document.getElementById("enableToggle") as HTMLInputElement;
-const themeModeSelect = document.getElementById(
-  "themeModeSelect"
-) as HTMLSelectElement;
+const themeModeForm = document.getElementById(
+  "themeModeForm",
+) as HTMLFormElement;
 const codeBlockVisibilitySelect = document.getElementById(
-  "codeBlockVisibilitySelect"
+  "codeBlockVisibilitySelect",
 ) as HTMLSelectElement;
 const keyboardVisibilitySelect = document.getElementById(
-  "keyboardVisibilitySelect"
+  "keyboardVisibilitySelect",
 ) as HTMLSelectElement;
 const openStudioButton = document.getElementById(
-  "openStudioButton"
+  "openStudioButton",
 ) as HTMLButtonElement;
 const statusEl = document.getElementById("status") as HTMLElement;
+const colorSchemeQuery = window.matchMedia("(prefers-color-scheme: dark)");
 
 // Load current state
 chrome.storage.sync.get(
@@ -44,23 +45,24 @@ chrome.storage.sync.get(
     const isEnabled = result.enabled !== false;
     const themeMode = normalizeThemeMode(result[THEME_MODE_STORAGE_KEY]);
     const codeBlockVisibility = normalizeCodeBlockVisibility(
-      result[CODE_BLOCK_VISIBILITY_STORAGE_KEY]
+      result[CODE_BLOCK_VISIBILITY_STORAGE_KEY],
     );
     const keyboardVisibility = normalizeKeyboardVisibility(
-      result[KEYBOARD_VISIBILITY_STORAGE_KEY]
+      result[KEYBOARD_VISIBILITY_STORAGE_KEY],
     );
 
     toggle.checked = isEnabled;
-    themeModeSelect.value = themeMode;
+    setSelectedThemeMode(themeMode);
     codeBlockVisibilitySelect.value = codeBlockVisibility;
     keyboardVisibilitySelect.value = keyboardVisibility;
+    applyPopupTheme(themeMode);
     updateStatusText(
       isEnabled,
       themeMode,
       codeBlockVisibility,
-      keyboardVisibility
+      keyboardVisibility,
     );
-  }
+  },
 );
 
 // Handle toggle change
@@ -79,12 +81,18 @@ toggle.addEventListener("change", async () => {
     enabled: isEnabled,
   });
 
-  updateStatusText(isEnabled, themeMode, codeBlockVisibility, keyboardVisibility);
+  updateStatusText(
+    isEnabled,
+    themeMode,
+    codeBlockVisibility,
+    keyboardVisibility,
+  );
 });
 
-themeModeSelect.addEventListener("change", async () => {
+themeModeForm.addEventListener("change", async () => {
   const themeMode = getSelectedThemeMode();
 
+  applyPopupTheme(themeMode);
   await chrome.storage.sync.set({ [THEME_MODE_STORAGE_KEY]: themeMode });
   await sendMessageToActiveTab({
     type: "SET_THEME_MODE",
@@ -95,8 +103,14 @@ themeModeSelect.addEventListener("change", async () => {
     toggle.checked,
     themeMode,
     getSelectedCodeBlockVisibility(),
-    getSelectedKeyboardVisibility()
+    getSelectedKeyboardVisibility(),
   );
+});
+
+colorSchemeQuery.addEventListener("change", () => {
+  if (getSelectedThemeMode() === "auto") {
+    applyPopupTheme("auto");
+  }
 });
 
 codeBlockVisibilitySelect.addEventListener("change", async () => {
@@ -114,7 +128,7 @@ codeBlockVisibilitySelect.addEventListener("change", async () => {
     toggle.checked,
     getSelectedThemeMode(),
     codeBlockVisibility,
-    getSelectedKeyboardVisibility()
+    getSelectedKeyboardVisibility(),
   );
 });
 
@@ -133,7 +147,7 @@ keyboardVisibilitySelect.addEventListener("change", async () => {
     toggle.checked,
     getSelectedThemeMode(),
     getSelectedCodeBlockVisibility(),
-    keyboardVisibility
+    keyboardVisibility,
   );
 });
 
@@ -144,18 +158,41 @@ openStudioButton.addEventListener("click", async () => {
 });
 
 function getSelectedThemeMode(): ThemeMode {
-  return normalizeThemeMode(themeModeSelect.value || DEFAULT_THEME_MODE);
+  const themeModeControl = themeModeForm.elements.namedItem(
+    "themeMode",
+  ) as RadioNodeList | null;
+
+  return normalizeThemeMode(themeModeControl?.value || DEFAULT_THEME_MODE);
+}
+
+function setSelectedThemeMode(themeMode: ThemeMode): void {
+  const input = themeModeForm.querySelector<HTMLInputElement>(
+    `input[name="themeMode"][value="${themeMode}"]`,
+  );
+  if (input) input.checked = true;
+}
+
+function applyPopupTheme(themeMode: ThemeMode): void {
+  const resolvedTheme =
+    themeMode === "auto"
+      ? colorSchemeQuery.matches
+        ? "dark"
+        : "light"
+      : themeMode;
+
+  document.documentElement.dataset.theme = resolvedTheme;
+  document.documentElement.dataset.themeMode = themeMode;
 }
 
 function getSelectedCodeBlockVisibility(): CodeBlockVisibility {
   return normalizeCodeBlockVisibility(
-    codeBlockVisibilitySelect.value || DEFAULT_CODE_BLOCK_VISIBILITY
+    codeBlockVisibilitySelect.value || DEFAULT_CODE_BLOCK_VISIBILITY,
   );
 }
 
 function getSelectedKeyboardVisibility(): KeyboardVisibility {
   return normalizeKeyboardVisibility(
-    keyboardVisibilitySelect.value || DEFAULT_KEYBOARD_VISIBILITY
+    keyboardVisibilitySelect.value || DEFAULT_KEYBOARD_VISIBILITY,
   );
 }
 
@@ -172,14 +209,15 @@ function updateStatusText(
   isEnabled: boolean,
   themeMode: ThemeMode,
   codeBlockVisibility: CodeBlockVisibility,
-  keyboardVisibility: KeyboardVisibility
+  keyboardVisibility: KeyboardVisibility,
 ): void {
   if (!isEnabled) {
     statusEl.textContent = "Detection disabled.";
     return;
   }
 
-  const themeText = themeMode === "auto" ? "automatic theme" : `${themeMode} theme`;
+  const themeText =
+    themeMode === "auto" ? "automatic theme" : `${themeMode} theme`;
   const codeText =
     codeBlockVisibility === "collapsed" ? "collapsed source" : "visible source";
   const keyboardText =
