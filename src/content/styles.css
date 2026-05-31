@@ -619,10 +619,19 @@ chatmusic-keyboard-toggle {
 .chatmusic-audio .abcjs-inline-audio .abcjs-midi-progress-background {
   background-color: var(--chatmusic-audio-track-bg);
   border-color: var(--chatmusic-audio-track-border);
+  cursor: pointer;
+  touch-action: none;
+}
+
+.chatmusic-audio
+  .abcjs-inline-audio
+  .abcjs-midi-progress-background.chatmusic-progress-dragging {
+  cursor: grabbing;
 }
 
 .chatmusic-audio .abcjs-inline-audio .abcjs-midi-progress-indicator {
   background-color: var(--chatmusic-audio-thumb);
+  pointer-events: none;
 }
 
 .chatmusic-audio .abcjs-inline-audio .abcjs-midi-clock,
