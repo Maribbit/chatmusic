@@ -21,8 +21,11 @@ describe("quality panel", () => {
     await element.updateComplete;
 
     expect(element.hidden).toBe(false);
-    expect(element.querySelector(".chatmusic-quality-summary")?.textContent)
-      .toContain("1 ABC parser issue found.");
+    const summaryText = element
+      .querySelector(".chatmusic-quality-summary")
+      ?.textContent?.replace(/\s+/g, " ")
+      .trim();
+    expect(summaryText).toContain("1 ABC parser issue found.");
     expect(element.textContent).toContain("WARNING: Unknown character ignored");
     expect(element.textContent).toContain("Line 4, column 5");
 

@@ -10,6 +10,7 @@ This project follows a lightweight [Keep a Changelog](https://keepachangelog.com
 
 - Moved reusable score rendering, playback, and player controls from `src/content` into a dedicated `src/player` domain.
 - Grouped player internals into `components`, `playback`, `view`, and `exports` subfolders with local boundary notes.
+- Extracted player renderer types, source-highlight range mapping, abcjs timing lookup, and playback highlight synchronization into focused player modules.
 
 ## [0.4.0] - 2026-05-31
 

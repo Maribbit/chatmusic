@@ -12,8 +12,9 @@ This module owns the reusable score player used by both the browser content scri
 ## Folder Map
 
 - `renderer.ts` is the public orchestration facade used by `src/content/` and `src/studio/`.
+- `types.ts` contains renderer-facing player contracts shared by internal player modules.
 - `components/` contains Lit custom elements and DOM control adapters used by the player view.
-- `playback/` contains playback-adjacent pure logic and audio asset integration.
+- `playback/` contains playback-adjacent pure logic, timing/source-highlight mapping, score highlight synchronization, and audio asset integration.
 - `view/` contains Shadow DOM composition, theme resolution, and player CSS.
 - `exports/` contains player-specific export helpers.
 
@@ -23,4 +24,4 @@ This module owns the reusable score player used by both the browser content scri
 - Observing host-page DOM changes or extension enabled state. That belongs in `src/content/index.ts`.
 - Studio editor state, layout, file import, and source persistence. Those belong in `src/studio/`.
 
-The current `renderer.ts` file is still the main orchestration point. Future refactors should split it by behavior while preserving this module boundary: visual rendering, playback, source highlighting, exports, and render-instance lifecycle. Keep `renderer.ts` as the stable entry point unless a new public player API is intentionally designed.
+The current `renderer.ts` file is still the main orchestration point, but pure timing and highlight helpers have moved into `playback/`. Future refactors should keep shrinking it by behavior while preserving this module boundary: visual rendering, playback setup, exports, and render-instance lifecycle. Keep `renderer.ts` as the stable entry point unless a new public player API is intentionally designed.

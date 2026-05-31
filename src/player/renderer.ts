@@ -25,16 +25,9 @@ import {
   getMidiDownloadFilename,
 } from "../shared/abc-midi-export";
 import type { ChatMusicQualityElement } from "./components/quality-panel";
-import {
-  createDurationControl,
-  type DurationControl,
-} from "./components/duration-control";
+import { createDurationControl } from "./components/duration-control";
 import { getTuneDurationSeconds } from "./playback/duration";
-import {
-  createKeyboardController,
-  type KeyboardController,
-  type MidiPitch,
-} from "./components/keyboard";
+import { createKeyboardController } from "./components/keyboard";
 import {
   downloadSvg,
   getScoreSvg,
@@ -44,77 +37,27 @@ import {
   getLocalPianoSynthOptions,
   playLocalPianoPitch,
 } from "./playback/soundfont";
+import { createTempoControl } from "./components/tempo-control";
 import {
-  createTempoControl,
-  type TempoControl,
-} from "./components/tempo-control";
+  clearPlaybackHighlight,
+  highlightTimingEvent,
+  setupKeyboard,
+} from "./playback/highlight";
+import { getSeekPercentForElement, getTimingEvents } from "./playback/timing";
+export { getSourceHighlightRangesForTest } from "./playback/source-highlight";
+export type {
+  RenderAbcOptions,
+  RenderInstance,
+  SourceHighlightRange,
+} from "./types";
 import { applyRenderViewTheme, createRenderView } from "./view/view";
-
-export interface RenderInstance {
-  container: HTMLElement;
-  scoreElement: HTMLElement;
-  keyboard: KeyboardController;
-  audioElement: HTMLElement;
-  qualityElement: ChatMusicQualityElement;
-  tempoControl: TempoControl;
-  durationControl: DurationControl;
-  codeToggleElement: ChatMusicCodeToggleElement;
-  preElement: Element;
-  preElementOriginalDisplay: string | null;
-  isCodeCollapsed: boolean;
-  abcText: string;
-  themeMode: ThemeMode;
-  visualObj: abcjs.TuneObject[] | null;
-  renderedStaffWidth: number;
-  synthControl: abcjs.SynthObjectController | null;
-  activePlaybackElements: Element[];
-  scoreResizeObserver: ResizeObserver | null;
-  scoreResizeTimer: number | undefined;
-  pendingPlaybackSeekPercent: number | null;
-  pendingPlaybackSeekPromise: Promise<unknown> | null;
-  progressDragCleanup: (() => void) | null;
-  onSourceHighlight: ((ranges: SourceHighlightRange[]) => void) | undefined;
-  cleanup: () => void;
-}
-
-export interface SourceHighlightRange {
-  start: number;
-  end: number;
-}
-
-export interface RenderAbcOptions {
-  onSourceHighlight?: (ranges: SourceHighlightRange[]) => void;
-}
-
-interface AbcElementRef {
-  startChar?: number;
-  endChar?: number;
-}
-
-interface TimingEvent {
-  type?: string;
-  milliseconds: number;
-  elements?: unknown[];
-  midiPitches?: MidiPitch[];
-  millisecondsPerMeasure?: number;
-  startChar?: number | null;
-  endChar?: number | null;
-  startCharArray?: Array<number | null>;
-  endCharArray?: Array<number | null>;
-}
-
-type TimedTuneObject = Omit<abcjs.TuneObject, "setTiming"> & {
-  noteTimings?: TimingEvent[];
-  setTiming?: (qpm?: number, measuresOfDelay?: number) => TimingEvent[];
-};
-
-type SeekableSynthControl = Omit<abcjs.SynthObjectController, "setProgress"> & {
-  isLoaded?: boolean;
-  play?: () => Promise<unknown>;
-  seek?: (percent: number) => void;
-  setProgress?: (percent: number, totalTime?: number) => void;
-  runWhenReady?: (fn: () => Promise<{ status: string }>) => Promise<unknown>;
-};
+import type {
+  AbcElementRef,
+  RenderAbcOptions,
+  RenderInstance,
+  SeekableSynthControl,
+  TimingEvent,
+} from "./types";
 
 const instances = new Map<Element, RenderInstance>();
 const shadowStyles = `${abcjsAudioStyles}\n${chatmusicStyles}`;
@@ -184,111 +127,6 @@ function createCursorControl(instance: RenderInstance): object {
   };
 }
 
-function highlightTimingEvent(
-  instance: RenderInstance,
-  event: TimingEvent,
-): void {
-  instance.tempoControl.update(event);
-  clearPlaybackHighlight(instance, false);
-
-  const elements = flattenTimingElements(event.elements);
-  for (const element of elements) {
-    element.classList.add("chatmusic-note-playing");
-  }
-
-  instance.activePlaybackElements = elements;
-  highlightKeyboardPitches(instance, event.midiPitches ?? []);
-  instance.onSourceHighlight?.(
-    getTimingEventSourceRanges(event, instance.abcText.length),
-  );
-}
-
-function clearPlaybackHighlight(
-  instance: RenderInstance,
-  clearSourceHighlight = true,
-): void {
-  for (const element of instance.activePlaybackElements) {
-    element.classList.remove("chatmusic-note-playing");
-  }
-  instance.keyboard.clearActiveKeys();
-  instance.activePlaybackElements = [];
-  if (clearSourceHighlight) instance.onSourceHighlight?.([]);
-}
-
-function setupKeyboard(instance: RenderInstance): void {
-  instance.keyboard.setup(getTuneMidiPitches(instance));
-}
-
-function highlightKeyboardPitches(
-  instance: RenderInstance,
-  midiPitches: MidiPitch[],
-): void {
-  instance.keyboard.highlightPitches(midiPitches);
-}
-
-function getTuneMidiPitches(instance: RenderInstance): number[] {
-  const pitches = new Set<number>();
-
-  for (const event of getTimingEvents(instance)) {
-    for (const midiPitch of event.midiPitches ?? []) {
-      if (midiPitch.pitch !== undefined) pitches.add(midiPitch.pitch);
-    }
-  }
-
-  return [...pitches].sort((first, second) => first - second);
-}
-
-function flattenTimingElements(elements: unknown[] | undefined): Element[] {
-  if (!elements) return [];
-
-  const flattened: Element[] = [];
-  for (const item of elements) {
-    if (item instanceof Element) {
-      flattened.push(item);
-    } else if (Array.isArray(item)) {
-      flattened.push(...flattenTimingElements(item));
-    }
-  }
-
-  return flattened;
-}
-
-function getTimingEventSourceRanges(
-  event: TimingEvent,
-  sourceLength: number,
-): SourceHighlightRange[] {
-  const starts = event.startCharArray ?? [event.startChar ?? null];
-  const ends = event.endCharArray ?? [event.endChar ?? null];
-  const ranges: SourceHighlightRange[] = [];
-
-  for (let index = 0; index < Math.max(starts.length, ends.length); index++) {
-    const start = starts[index];
-    const end = ends[index];
-    if (typeof start !== "number" || typeof end !== "number") continue;
-    if (!Number.isFinite(start) || !Number.isFinite(end)) continue;
-
-    const boundedStart = Math.max(0, Math.min(sourceLength, start));
-    const boundedEnd = Math.max(0, Math.min(sourceLength, end));
-    if (boundedEnd <= boundedStart) continue;
-    ranges.push({ start: boundedStart, end: boundedEnd });
-  }
-
-  return ranges.filter(
-    (range, index) =>
-      ranges.findIndex(
-        (candidate) =>
-          candidate.start === range.start && candidate.end === range.end,
-      ) === index,
-  );
-}
-
-export function getSourceHighlightRangesForTest(
-  event: TimingEvent,
-  sourceLength: number,
-): SourceHighlightRange[] {
-  return getTimingEventSourceRanges(event, sourceLength);
-}
-
 async function seekToAbcElement(
   instance: RenderInstance,
   abcElement: AbcElementRef,
@@ -307,59 +145,6 @@ async function seekToAbcElement(
   } else {
     seek();
   }
-}
-
-function getSeekPercentForElement(
-  instance: RenderInstance,
-  abcElement: AbcElementRef,
-): number | null {
-  if (abcElement.startChar === undefined || abcElement.endChar === undefined) {
-    return null;
-  }
-
-  const timingEvents = getTimingEvents(instance);
-  const lastEvent = timingEvents[timingEvents.length - 1];
-  if (!lastEvent || lastEvent.milliseconds <= 0) return null;
-
-  const matchingEvent = timingEvents.find((event) =>
-    timingEventMatchesElement(event, abcElement),
-  );
-  if (!matchingEvent) return null;
-
-  return matchingEvent.milliseconds / lastEvent.milliseconds;
-}
-
-function getTimingEvents(instance: RenderInstance): TimingEvent[] {
-  const tune = instance.visualObj?.[0] as TimedTuneObject | undefined;
-  if (!tune) return [];
-
-  if (!tune.noteTimings || tune.noteTimings.length === 0) {
-    tune.noteTimings = tune.setTiming?.(0, 0) ?? [];
-  }
-
-  return tune.noteTimings;
-}
-
-function timingEventMatchesElement(
-  event: TimingEvent,
-  abcElement: AbcElementRef,
-): boolean {
-  if (event.type && event.type !== "event") return false;
-
-  const starts = event.startCharArray ?? [event.startChar ?? null];
-  const ends = event.endCharArray ?? [event.endChar ?? null];
-
-  return starts.some((start, index) => {
-    const end = ends[index];
-    return (
-      start !== null &&
-      end !== null &&
-      abcElement.endChar !== undefined &&
-      abcElement.startChar !== undefined &&
-      abcElement.endChar > start &&
-      abcElement.startChar < end
-    );
-  });
 }
 
 function setupTempoControl(instance: RenderInstance): void {
