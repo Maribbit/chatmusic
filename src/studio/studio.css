@@ -14,8 +14,8 @@
   --studio-accent: #1f6feb;
   --studio-accent-hover: #1158c7;
   --studio-accent-text: #ffffff;
-  --studio-code-bg: #101827;
-  --studio-code-text: #dbeafe;
+  --studio-code-bg: #f8fafc;
+  --studio-code-text: #1e293b;
   --studio-empty-bg: #eef2f7;
   --studio-editor-size: 44%;
   --studio-editor-mobile-size: 38vh;
@@ -289,6 +289,8 @@ button {
 }
 
 .editor-pane {
+  container-name: studio-editor-pane;
+  container-type: inline-size;
   grid-column: 1;
   grid-row: 2;
   grid-template-rows: auto auto minmax(0, 1fr);
@@ -368,6 +370,40 @@ button {
 
 .pane-tools span[aria-live="polite"] {
   margin: 0 4px;
+}
+
+@container studio-editor-pane (max-width: 640px) {
+  #sourceStats {
+    display: none;
+  }
+}
+
+@container studio-editor-pane (max-width: 480px) {
+  .pane-header {
+    gap: 8px;
+    padding-inline: 10px;
+  }
+
+  #renderStatus,
+  #renderStatus + #sourceStats,
+  #sourceStats + .header-divider {
+    display: none;
+  }
+}
+
+@container studio-editor-pane (max-width: 320px) {
+  .pane-header {
+    gap: 6px;
+    padding-inline: 8px;
+  }
+
+  .pane-tools {
+    gap: 2px;
+  }
+
+  .pane-tools:first-child .header-divider {
+    margin-inline: 2px;
+  }
 }
 
 .auto-check-field {

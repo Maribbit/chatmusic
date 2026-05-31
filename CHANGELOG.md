@@ -22,6 +22,8 @@ This project follows a lightweight [Keep a Changelog](https://keepachangelog.com
 - ABC parser warning panels in rendered score cards now render as complete block panels instead of fragmented inline borders, and long abcjs messages wrap inside the card.
 - Popup detection toggles now apply immediately to the active tab, including pages that were open before the extension loaded or reloaded.
 - Playback progress bars now seek continuously while dragging, including before the first playback starts.
+- Studio source editor now uses a light code background in light mode instead of keeping the dark editor palette.
+- Studio editor toolbar status text now progressively hides at narrow pane widths so the action buttons stay aligned without adding vertical space.
 - Studio split panes now keep narrow editor contents clipped to the editor pane instead of letting the source area overlap the preview.
 - Studio ABC source editor now fills the available pane height when the quality panel is hidden.
 - Playback no longer starts an automatic full-piano soundfont warmup that could leave abcjs note caches in a failed state after transient sample-load errors.
