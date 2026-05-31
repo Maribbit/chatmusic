@@ -646,6 +646,37 @@ export function removeDisconnectedRenders(): void {
   }
 }
 
+export function removeOrphanRenders(): void {
+  const activeContainers = new Set(
+    [...instances.values()].map((instance) => instance.container),
+  );
+
+  for (const container of document.querySelectorAll(".chatmusic-host")) {
+    if (
+      !(container instanceof HTMLElement) ||
+      activeContainers.has(container)
+    ) {
+      continue;
+    }
+
+    const sourceElement = container.previousElementSibling;
+    if (
+      sourceElement instanceof HTMLElement &&
+      sourceElement.style.display === "none"
+    ) {
+      sourceElement.style.display = "";
+    }
+    container.remove();
+  }
+}
+
+export function removeAllRenders(): void {
+  for (const [preElement, instance] of instances) {
+    disposeRender(preElement, instance, preElement.isConnected);
+  }
+  removeOrphanRenders();
+}
+
 function disposeRender(
   preElement: Element,
   instance: RenderInstance,

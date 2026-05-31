@@ -43,6 +43,7 @@ Default playback uses bundled piano soundfont samples packaged with the extensio
 
 - `storage`: Saves local extension preferences.
 - `activeTab`: Lets the popup apply setting changes to the current tab.
+- `scripting`: Lets the popup inject ChatMusic into the active tab if that page was already open before the extension loaded or reloaded.
 - Content script access to all URLs: Allows ChatMusic to detect ABC notation in code blocks across supported websites. Detection happens locally in the browser tab.
 - Web-accessible soundfont resources: Allows the content script to load bundled piano audio samples for local playback.
 

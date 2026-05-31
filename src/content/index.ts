@@ -6,7 +6,9 @@ import { scanForAbc } from "./detector";
 import {
   renderAbc,
   hasRender,
+  removeAllRenders,
   removeDisconnectedRenders,
+  removeOrphanRenders,
   updateRenderThemes,
   updateCodeBlockVisibility,
   updateKeyboardVisibility,
@@ -55,6 +57,7 @@ let themeObserverStarted = false;
 function fullScan(): void {
   if (!enabled) return;
 
+  removeOrphanRenders();
   removeDisconnectedRenders();
 
   const results = scanForAbc(document);
@@ -69,7 +72,7 @@ function fullScan(): void {
         result.abcText,
         themeMode,
         codeBlockVisibility,
-        keyboardVisibility
+        keyboardVisibility,
       );
       processedText.set(result.element, result.abcText);
       detected++;
@@ -98,7 +101,7 @@ function updateBadge(count: number): void {
  */
 function debounce<T extends unknown[]>(
   fn: (...args: T) => void,
-  delay: number
+  delay: number,
 ): (...args: T) => void {
   let timer: ReturnType<typeof setTimeout>;
   return (...args: T) => {
@@ -121,6 +124,39 @@ const scheduleThemeSync = debounce(() => {
   if (!enabled || themeMode !== "auto") return;
   updateRenderThemes(themeMode);
 }, 100);
+
+function applyEnabled(nextEnabled: boolean): void {
+  enabled = nextEnabled;
+
+  if (enabled) {
+    setupObserver();
+    setupThemeObserver();
+    fullScan();
+    return;
+  }
+
+  removeAllRenders();
+  updateBadge(0);
+}
+
+function applyThemeMode(nextThemeMode: ThemeMode): void {
+  themeMode = nextThemeMode;
+  if (enabled) updateRenderThemes(themeMode);
+}
+
+function applyCodeBlockVisibilitySetting(
+  nextCodeBlockVisibility: CodeBlockVisibility,
+): void {
+  codeBlockVisibility = nextCodeBlockVisibility;
+  if (enabled) updateCodeBlockVisibility(codeBlockVisibility);
+}
+
+function applyKeyboardVisibilitySetting(
+  nextKeyboardVisibility: KeyboardVisibility,
+): void {
+  keyboardVisibility = nextKeyboardVisibility;
+  if (enabled) updateKeyboardVisibility(keyboardVisibility);
+}
 
 /**
  * Set up the MutationObserver on document.body.
@@ -177,31 +213,56 @@ function setupThemeObserver(): void {
 function setupMessageListener(): void {
   chrome.runtime.onMessage.addListener((message) => {
     if (message.type === "SET_ENABLED") {
-      enabled = message.enabled;
-      if (enabled) {
-        setupObserver();
-        setupThemeObserver();
-        fullScan();
-      }
+      applyEnabled(message.enabled !== false);
     }
 
     if (message.type === "SET_THEME_MODE") {
-      themeMode = normalizeThemeMode(message.themeMode);
-      updateRenderThemes(themeMode);
+      applyThemeMode(normalizeThemeMode(message.themeMode));
     }
 
     if (message.type === "SET_CODE_BLOCK_VISIBILITY") {
-      codeBlockVisibility = normalizeCodeBlockVisibility(
-        message.codeBlockVisibility
+      applyCodeBlockVisibilitySetting(
+        normalizeCodeBlockVisibility(message.codeBlockVisibility),
       );
-      updateCodeBlockVisibility(codeBlockVisibility);
     }
 
     if (message.type === "SET_KEYBOARD_VISIBILITY") {
-      keyboardVisibility = normalizeKeyboardVisibility(
-        message.keyboardVisibility
+      applyKeyboardVisibilitySetting(
+        normalizeKeyboardVisibility(message.keyboardVisibility),
       );
-      updateKeyboardVisibility(keyboardVisibility);
+    }
+  });
+}
+
+function setupStorageListener(): void {
+  chrome.storage.onChanged.addListener((changes, areaName) => {
+    if (areaName !== "sync") return;
+
+    if (changes.enabled) {
+      const nextEnabled = changes.enabled.newValue !== false;
+      if (nextEnabled !== enabled) applyEnabled(nextEnabled);
+    }
+
+    if (changes[THEME_MODE_STORAGE_KEY]) {
+      applyThemeMode(
+        normalizeThemeMode(changes[THEME_MODE_STORAGE_KEY].newValue),
+      );
+    }
+
+    if (changes[CODE_BLOCK_VISIBILITY_STORAGE_KEY]) {
+      applyCodeBlockVisibilitySetting(
+        normalizeCodeBlockVisibility(
+          changes[CODE_BLOCK_VISIBILITY_STORAGE_KEY].newValue,
+        ),
+      );
+    }
+
+    if (changes[KEYBOARD_VISIBILITY_STORAGE_KEY]) {
+      applyKeyboardVisibilitySetting(
+        normalizeKeyboardVisibility(
+          changes[KEYBOARD_VISIBILITY_STORAGE_KEY].newValue,
+        ),
+      );
     }
   });
 }
@@ -220,10 +281,10 @@ async function loadState(): Promise<void> {
     enabled = result.enabled !== false; // Default to enabled
     themeMode = normalizeThemeMode(result[THEME_MODE_STORAGE_KEY]);
     codeBlockVisibility = normalizeCodeBlockVisibility(
-      result[CODE_BLOCK_VISIBILITY_STORAGE_KEY]
+      result[CODE_BLOCK_VISIBILITY_STORAGE_KEY],
     );
     keyboardVisibility = normalizeKeyboardVisibility(
-      result[KEYBOARD_VISIBILITY_STORAGE_KEY]
+      result[KEYBOARD_VISIBILITY_STORAGE_KEY],
     );
   } catch {
     enabled = true;
@@ -241,6 +302,7 @@ async function init(): Promise<void> {
 
   // Listen for messages even when detection starts disabled.
   setupMessageListener();
+  setupStorageListener();
 
   if (!enabled) {
     log("Extension disabled, skipping init");

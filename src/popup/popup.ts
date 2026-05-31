@@ -4,8 +4,6 @@
  */
 import {
   CODE_BLOCK_VISIBILITY_STORAGE_KEY,
-  DEFAULT_CODE_BLOCK_VISIBILITY,
-  DEFAULT_KEYBOARD_VISIBILITY,
   DEFAULT_THEME_MODE,
   KEYBOARD_VISIBILITY_STORAGE_KEY,
   THEME_MODE_STORAGE_KEY,
@@ -21,12 +19,12 @@ const toggle = document.getElementById("enableToggle") as HTMLInputElement;
 const themeModeForm = document.getElementById(
   "themeModeForm",
 ) as HTMLFormElement;
-const codeBlockVisibilitySelect = document.getElementById(
-  "codeBlockVisibilitySelect",
-) as HTMLSelectElement;
-const keyboardVisibilitySelect = document.getElementById(
-  "keyboardVisibilitySelect",
-) as HTMLSelectElement;
+const codeBlockVisibilityToggle = document.getElementById(
+  "codeBlockVisibilityToggle",
+) as HTMLInputElement;
+const keyboardVisibilityToggle = document.getElementById(
+  "keyboardVisibilityToggle",
+) as HTMLInputElement;
 const openStudioButton = document.getElementById(
   "openStudioButton",
 ) as HTMLButtonElement;
@@ -53,8 +51,8 @@ chrome.storage.sync.get(
 
     toggle.checked = isEnabled;
     setSelectedThemeMode(themeMode);
-    codeBlockVisibilitySelect.value = codeBlockVisibility;
-    keyboardVisibilitySelect.value = keyboardVisibility;
+    codeBlockVisibilityToggle.checked = codeBlockVisibility === "expanded";
+    keyboardVisibilityToggle.checked = keyboardVisibility === "visible";
     applyPopupTheme(themeMode);
     updateStatusText(
       isEnabled,
@@ -113,7 +111,7 @@ colorSchemeQuery.addEventListener("change", () => {
   }
 });
 
-codeBlockVisibilitySelect.addEventListener("change", async () => {
+codeBlockVisibilityToggle.addEventListener("change", async () => {
   const codeBlockVisibility = getSelectedCodeBlockVisibility();
 
   await chrome.storage.sync.set({
@@ -132,7 +130,7 @@ codeBlockVisibilitySelect.addEventListener("change", async () => {
   );
 });
 
-keyboardVisibilitySelect.addEventListener("change", async () => {
+keyboardVisibilityToggle.addEventListener("change", async () => {
   const keyboardVisibility = getSelectedKeyboardVisibility();
 
   await chrome.storage.sync.set({
@@ -185,24 +183,48 @@ function applyPopupTheme(themeMode: ThemeMode): void {
 }
 
 function getSelectedCodeBlockVisibility(): CodeBlockVisibility {
-  return normalizeCodeBlockVisibility(
-    codeBlockVisibilitySelect.value || DEFAULT_CODE_BLOCK_VISIBILITY,
-  );
+  return codeBlockVisibilityToggle.checked ? "expanded" : "collapsed";
 }
 
 function getSelectedKeyboardVisibility(): KeyboardVisibility {
-  return normalizeKeyboardVisibility(
-    keyboardVisibilitySelect.value || DEFAULT_KEYBOARD_VISIBILITY,
-  );
+  return keyboardVisibilityToggle.checked ? "visible" : "hidden";
 }
 
 async function sendMessageToActiveTab(message: object): Promise<void> {
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
   if (!tab?.id) return;
 
-  await chrome.tabs.sendMessage(tab.id, message).catch(() => {
-    // Tab may not have content script loaded
-  });
+  if (await trySendMessage(tab.id, message)) return;
+
+  await injectContentScript(tab.id);
+  await trySendMessage(tab.id, message);
+}
+
+async function trySendMessage(
+  tabId: number,
+  message: object,
+): Promise<boolean> {
+  try {
+    await chrome.tabs.sendMessage(tabId, message);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+async function injectContentScript(tabId: number): Promise<void> {
+  const contentScriptPath =
+    chrome.runtime.getManifest().content_scripts?.[0]?.js?.[0];
+  if (!contentScriptPath) return;
+
+  try {
+    await chrome.scripting.executeScript({
+      target: { tabId },
+      files: [contentScriptPath],
+    });
+  } catch {
+    // Some browser pages do not allow extension scripts.
+  }
 }
 
 function updateStatusText(
