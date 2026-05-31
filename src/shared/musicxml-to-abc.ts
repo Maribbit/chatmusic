@@ -1,5 +1,17 @@
 const DEFAULT_TITLE = "Imported MusicXML";
 const ABC_UNIT_DIVISOR = 4;
+const APPROXIMATE_DURATION_CANDIDATES: DurationFraction[] = [
+  { numerator: 1, denominator: 4 },
+  { numerator: 1, denominator: 2 },
+  { numerator: 1, denominator: 1 },
+  { numerator: 2, denominator: 1 },
+  { numerator: 3, denominator: 1 },
+  { numerator: 4, denominator: 1 },
+  { numerator: 6, denominator: 1 },
+  { numerator: 8, denominator: 1 },
+  { numerator: 12, denominator: 1 },
+  { numerator: 16, denominator: 1 },
+];
 
 interface MeterState {
   beats: number;
@@ -17,6 +29,11 @@ interface MusicXmlEvent {
   duration: number;
   divisions: number;
   isRest: boolean;
+}
+
+interface DurationFraction {
+  numerator: number;
+  denominator: number;
 }
 
 interface VoiceState {
@@ -40,14 +57,14 @@ export class MusicXmlConversionError extends Error {
 export function convertMusicXmlToAbc(musicXmlText: string): string {
   const musicXmlDocument = new DOMParser().parseFromString(
     musicXmlText,
-    "application/xml"
+    "application/xml",
   );
   assertValidMusicXmlDocument(musicXmlDocument);
 
   const score = musicXmlDocument.documentElement;
   if (score.localName !== "score-partwise") {
     throw new MusicXmlConversionError(
-      "Only MusicXML score-partwise documents are supported."
+      "Only MusicXML score-partwise documents are supported.",
     );
   }
 
@@ -59,7 +76,7 @@ export function convertMusicXmlToAbc(musicXmlText: string): string {
   const initialState = getInitialState(parts);
   const partNames = getPartNames(score);
   const convertedParts = parts.flatMap((part, index) =>
-    convertPart(part, partNames, index, initialState)
+    convertPart(part, partNames, index, initialState),
   );
 
   if (convertedParts.length === 0) {
@@ -71,15 +88,18 @@ export function convertMusicXmlToAbc(musicXmlText: string): string {
     `T: ${getScoreTitle(score)}`,
     `M: ${initialState.meter.beats}/${initialState.meter.beatType}`,
     "L: 1/16",
-    `K: ${initialState.key}`,
     ...convertedParts.map((voice) => `V:${voice.id} name="${voice.label}"`),
-    "",
-    ...convertedParts.map((voice) => `[V:${voice.id}] ${finishVoiceLine(voice)}`),
+    `K: ${initialState.key}`,
+    ...convertedParts.map(
+      (voice) => `[V:${voice.id}] ${finishVoiceLine(voice)}`,
+    ),
   ].join("\n");
 }
 
 function assertValidMusicXmlDocument(musicXmlDocument: Document): void {
-  if (getDescendants(musicXmlDocument.documentElement, "parsererror").length > 0) {
+  if (
+    getDescendants(musicXmlDocument.documentElement, "parsererror").length > 0
+  ) {
     throw new MusicXmlConversionError("The selected file is not valid XML.");
   }
 }
@@ -107,7 +127,7 @@ function convertPart(
   part: Element,
   partNames: Map<string, string>,
   partIndex: number,
-  initialState: ConversionState
+  initialState: ConversionState,
 ): VoiceState[] {
   const partId = part.getAttribute("id") || `P${partIndex + 1}`;
   const partName = partNames.get(partId) ?? `Part ${partIndex + 1}`;
@@ -133,7 +153,7 @@ function convertPart(
 
     for (const [voiceId, measureVoice] of measureVoices) {
       const voice = getOrCreateVoice(voices, partId, partName, voiceId);
-      const measureText = measureVoice.events.map(formatEvent).join(" ");
+      const measureText = formatEvents(measureVoice.events).join(" ");
       if (measureText) voice.measures.push(`${measureText} |`);
     }
   }
@@ -151,7 +171,7 @@ function appendNoteEvent(
   note: Element,
   measureVoices: Map<string, MeasureVoiceState>,
   state: ConversionState,
-  cursor: number
+  cursor: number,
 ): number | null {
   if (getChild(note, "grace")) return null;
 
@@ -190,7 +210,7 @@ function createRestEvent(duration: number, divisions: number): MusicXmlEvent {
 function createEvent(
   note: Element,
   duration: number,
-  divisions: number
+  divisions: number,
 ): MusicXmlEvent {
   if (getChild(note, "rest")) {
     return {
@@ -219,8 +239,186 @@ function createEvent(
   };
 }
 
-function formatEvent(event: MusicXmlEvent): string {
-  const duration = formatDuration(event.duration, event.divisions);
+function formatEvents(events: MusicXmlEvent[]): string[] {
+  const formattedEvents: string[] = [];
+
+  for (let index = 0; index < events.length; ) {
+    const fraction = getDurationFraction(
+      events[index].duration,
+      events[index].divisions,
+    );
+
+    if (isRepresentableDuration(fraction)) {
+      formattedEvents.push(formatRepresentableEvent(events[index], fraction));
+      index++;
+      continue;
+    }
+
+    const tupletFormat = getTupletFormat(fraction);
+    if (!isSupportedTupletFormat(tupletFormat)) {
+      formattedEvents.push(formatApproximateEvent(events[index], fraction));
+      index++;
+      continue;
+    }
+
+    const groupStart = index;
+    index++;
+    while (
+      index < events.length &&
+      durationFractionsMatch(
+        fraction,
+        getDurationFraction(events[index].duration, events[index].divisions),
+      )
+    ) {
+      index++;
+    }
+
+    formattedEvents.push(
+      formatTupletEvents(events.slice(groupStart, index), fraction),
+    );
+  }
+
+  return formattedEvents;
+}
+
+function formatRepresentableEvent(
+  event: MusicXmlEvent,
+  fraction: DurationFraction,
+): string {
+  const splitDurations = getSplitDurationFractions(fraction);
+  if (splitDurations.length === 0) {
+    return formatEventWithDuration(event, formatDurationFraction(fraction));
+  }
+
+  if (event.isRest) {
+    return splitDurations
+      .map((duration) => `z${formatDurationFraction(duration)}`)
+      .join(" ");
+  }
+
+  const eventText = formatEventWithoutDuration(event);
+  return splitDurations
+    .map(
+      (duration, index) =>
+        `${eventText}${formatDurationFraction(duration)}${index < splitDurations.length - 1 ? "-" : ""}`,
+    )
+    .join("");
+}
+
+function formatApproximateEvent(
+  event: MusicXmlEvent,
+  fraction: DurationFraction,
+): string {
+  return formatRepresentableEvent(
+    event,
+    getNearestApproximateDuration(fraction),
+  );
+}
+
+function getNearestApproximateDuration(
+  fraction: DurationFraction,
+): DurationFraction {
+  const target = fraction.numerator / fraction.denominator;
+
+  return APPROXIMATE_DURATION_CANDIDATES.reduce((best, candidate) => {
+    const bestDistance = Math.abs(best.numerator / best.denominator - target);
+    const candidateDistance = Math.abs(
+      candidate.numerator / candidate.denominator - target,
+    );
+
+    return candidateDistance < bestDistance ? candidate : best;
+  });
+}
+
+function getSplitDurationFractions(
+  fraction: DurationFraction,
+): DurationFraction[] {
+  if (
+    !isPowerOfTwo(fraction.denominator) ||
+    fraction.numerator <= 1 ||
+    isPowerOfTwo(fraction.numerator)
+  ) {
+    return [];
+  }
+
+  const durations: DurationFraction[] = [];
+  let remaining = fraction.numerator;
+
+  while (remaining > 0) {
+    const numerator = getLargestPowerOfTwoAtMost(remaining);
+    durations.push(reduceFraction(numerator, fraction.denominator));
+    remaining -= numerator;
+  }
+
+  return durations;
+}
+
+function formatIntegerDuration(duration: number): string {
+  return duration === 1 ? "" : String(duration);
+}
+
+function formatTupletEvents(
+  events: MusicXmlEvent[],
+  fraction: DurationFraction,
+): string {
+  const groups: string[] = [];
+  const groupSize = Math.max(1, Math.min(fraction.denominator, 9));
+  const tupletFormat = getTupletFormat(fraction);
+
+  for (let index = 0; index < events.length; index += groupSize) {
+    const group = events.slice(index, index + groupSize);
+    const tuplet = `(${tupletFormat.denominator}:${tupletFormat.numerator}:${group.length}`;
+    groups.push(
+      `${tuplet} ${group.map((event) => formatTupletEvent(event, tupletFormat.writtenDuration)).join(" ")}`,
+    );
+  }
+
+  return groups.join(" ");
+}
+
+function getTupletFormat(fraction: DurationFraction): {
+  denominator: number;
+  numerator: number;
+  writtenDuration: number;
+} {
+  let numerator = fraction.numerator;
+  let writtenDuration = 1;
+
+  while (numerator > 9 && numerator % 2 === 0) {
+    numerator /= 2;
+    writtenDuration *= 2;
+  }
+
+  return {
+    denominator: fraction.denominator,
+    numerator,
+    writtenDuration,
+  };
+}
+
+function isSupportedTupletFormat(tupletFormat: {
+  denominator: number;
+  numerator: number;
+  writtenDuration: number;
+}): boolean {
+  return tupletFormat.denominator <= 9 && tupletFormat.numerator <= 9;
+}
+
+function formatTupletEvent(
+  event: MusicXmlEvent,
+  writtenDuration: number,
+): string {
+  return formatEventWithDuration(event, formatIntegerDuration(writtenDuration));
+}
+
+function formatEventWithoutDuration(event: MusicXmlEvent): string {
+  return formatEventWithDuration(event, "");
+}
+
+function formatEventWithDuration(
+  event: MusicXmlEvent,
+  duration: string,
+): string {
   if (event.isRest) return `z${duration}`;
 
   if (event.pitches.length === 1) return `${event.pitches[0]}${duration}`;
@@ -228,13 +426,10 @@ function formatEvent(event: MusicXmlEvent): string {
   return `[${event.pitches.join("")}]${duration}`;
 }
 
-function formatDuration(duration: number, divisions: number): string {
-  const numerator = duration * ABC_UNIT_DIVISOR;
-  const denominator = divisions;
-  const divisor = greatestCommonDivisor(numerator, denominator);
-  const reducedNumerator = numerator / divisor;
-  const reducedDenominator = denominator / divisor;
-
+function formatDurationFraction({
+  numerator: reducedNumerator,
+  denominator: reducedDenominator,
+}: DurationFraction): string {
   if (reducedNumerator === reducedDenominator) return "";
   if (reducedDenominator === 1) return String(reducedNumerator);
   if (reducedNumerator === 1) {
@@ -242,6 +437,54 @@ function formatDuration(duration: number, divisions: number): string {
   }
 
   return `${reducedNumerator}/${reducedDenominator}`;
+}
+
+function getDurationFraction(
+  duration: number,
+  divisions: number,
+): DurationFraction {
+  const numerator = duration * ABC_UNIT_DIVISOR;
+  const denominator = divisions;
+
+  return reduceFraction(numerator, denominator);
+}
+
+function reduceFraction(
+  numerator: number,
+  denominator: number,
+): DurationFraction {
+  const divisor = greatestCommonDivisor(numerator, denominator);
+
+  return {
+    numerator: numerator / divisor,
+    denominator: denominator / divisor,
+  };
+}
+
+function isRepresentableDuration(fraction: DurationFraction): boolean {
+  return isPowerOfTwo(fraction.denominator);
+}
+
+function durationFractionsMatch(
+  first: DurationFraction,
+  second: DurationFraction,
+): boolean {
+  return (
+    first.numerator === second.numerator &&
+    first.denominator === second.denominator
+  );
+}
+
+function isPowerOfTwo(value: number): boolean {
+  return Number.isInteger(value) && value > 0 && (value & (value - 1)) === 0;
+}
+
+function getLargestPowerOfTwoAtMost(value: number): number {
+  let power = 1;
+
+  while (power * 2 <= value) power *= 2;
+
+  return power;
 }
 
 function getNoteDuration(note: Element, state: ConversionState): number {
@@ -306,7 +549,7 @@ function getAccidental(alter: number): string {
 
 function applyAttributes(
   state: ConversionState,
-  attributes: Element
+  attributes: Element,
 ): ConversionState {
   const divisions = readPositiveNumber(getChildText(attributes, "divisions"));
   if (divisions !== null) state.divisions = divisions;
@@ -323,8 +566,40 @@ function applyAttributes(
 function parseKey(key: Element): string {
   const fifths = Number(getChildText(key, "fifths") ?? "0");
   const mode = getChildText(key, "mode")?.toLowerCase();
-  const majorKeys = ["Cb", "Gb", "Db", "Ab", "Eb", "Bb", "F", "C", "G", "D", "A", "E", "B", "F#", "C#"];
-  const minorKeys = ["Abm", "Ebm", "Bbm", "Fm", "Cm", "Gm", "Dm", "Am", "Em", "Bm", "F#m", "C#m", "G#m", "D#m", "A#m"];
+  const majorKeys = [
+    "Cb",
+    "Gb",
+    "Db",
+    "Ab",
+    "Eb",
+    "Bb",
+    "F",
+    "C",
+    "G",
+    "D",
+    "A",
+    "E",
+    "B",
+    "F#",
+    "C#",
+  ];
+  const minorKeys = [
+    "Abm",
+    "Ebm",
+    "Bbm",
+    "Fm",
+    "Cm",
+    "Gm",
+    "Dm",
+    "Am",
+    "Em",
+    "Bm",
+    "F#m",
+    "C#m",
+    "G#m",
+    "D#m",
+    "A#m",
+  ];
   const index = fifths + 7;
 
   if (index < 0 || index >= majorKeys.length) return "C";
@@ -365,7 +640,7 @@ function getOrCreateVoice(
   voices: Map<string, VoiceState>,
   partId: string,
   partName: string,
-  voiceId: string
+  voiceId: string,
 ): VoiceState {
   const id = `${sanitizeVoiceId(partId)}_${sanitizeVoiceToken(voiceId)}`;
   const existing = voices.get(id);
@@ -378,7 +653,7 @@ function getOrCreateVoice(
 
 function getOrCreateMeasureVoice(
   measureVoices: Map<string, MeasureVoiceState>,
-  voiceId: string
+  voiceId: string,
 ): MeasureVoiceState {
   const existing = measureVoices.get(voiceId);
   if (existing) return existing;
@@ -438,7 +713,9 @@ function getChild(element: Element, localName: string): Element | null {
 }
 
 function getChildren(element: Element, localName: string): Element[] {
-  return Array.from(element.children).filter((child) => child.localName === localName);
+  return Array.from(element.children).filter(
+    (child) => child.localName === localName,
+  );
 }
 
 function getChildText(element: Element, localName: string): string | null {
@@ -451,6 +728,6 @@ function getDescendantText(element: Element, localName: string): string | null {
 
 function getDescendants(element: Element, localName: string): Element[] {
   return Array.from(element.getElementsByTagName("*")).filter(
-    (descendant) => descendant.localName === localName
+    (descendant) => descendant.localName === localName,
   );
 }

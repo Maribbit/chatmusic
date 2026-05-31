@@ -8,6 +8,7 @@ This project follows a lightweight [Keep a Changelog](https://keepachangelog.com
 
 ### Fixed
 
+- MusicXML/MXL imports now place generated ABC voice headers before the key signature and emit abcjs-compatible durations, so complex imported scores render as notation instead of title-only SVGs or parser warnings; conversion training and validation samples came from https://github.com/musetrainer/library.
 - ABC parser warning panels in rendered score cards now render as complete block panels instead of fragmented inline borders, and long abcjs messages wrap inside the card.
 - Studio ABC source editor now fills the available pane height when the quality panel is hidden.
 - Playback no longer starts an automatic full-piano soundfont warmup that could leave abcjs note caches in a failed state after transient sample-load errors.
