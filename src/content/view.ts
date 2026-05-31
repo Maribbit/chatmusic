@@ -3,6 +3,7 @@ import type { ThemeMode } from "../shared/settings";
 import { CODE_TOGGLE_EVENT } from "./code-toggle";
 import type { ChatMusicFullscreenToggleElement } from "./fullscreen-toggle";
 import "./fullscreen-toggle";
+import "./keyboard-toggle";
 import { QUALITY_COPY_EVENT } from "./quality-panel";
 import { resolveTheme } from "./theme";
 
@@ -10,7 +11,7 @@ export interface RenderViewElements {
   container: HTMLElement;
   scoreElement: HTMLElement;
   keyboardElement: HTMLElement;
-  keyboardToggleButton: HTMLButtonElement;
+  keyboardToggleElement: HTMLElement;
   audioElement: HTMLElement;
   qualityElement: HTMLElement;
   tempoElement: HTMLElement;
@@ -60,9 +61,9 @@ export function createRenderView(
     keyboardElement: container.querySelector(
       ".chatmusic-keyboard",
     ) as HTMLElement,
-    keyboardToggleButton: container.querySelector(
-      ".chatmusic-keyboard-toggle-button",
-    ) as HTMLButtonElement,
+    keyboardToggleElement: container.querySelector(
+      "chatmusic-keyboard-toggle",
+    ) as HTMLElement,
     audioElement: container.querySelector(".chatmusic-audio") as HTMLElement,
     qualityElement: container.querySelector("chatmusic-quality") as HTMLElement,
     tempoElement: container.querySelector("chatmusic-tempo") as HTMLElement,
@@ -116,15 +117,7 @@ function renderContainerTemplate(): TemplateResult {
           ${renderExternalLinkIcon()}
         </button>
         <chatmusic-fullscreen-toggle></chatmusic-fullscreen-toggle>
-        <button
-          class="chatmusic-keyboard-toggle-button"
-          type="button"
-          title="Hide keyboard"
-          aria-label="Hide keyboard"
-          aria-pressed="true"
-        >
-          ${renderKeyboardIcon()}
-        </button>
+        <chatmusic-keyboard-toggle></chatmusic-keyboard-toggle>
         <chatmusic-code-toggle></chatmusic-code-toggle>
       </div>
     </div>
@@ -178,16 +171,6 @@ function renderExternalLinkIcon(): TemplateResult {
     <path d="M15 3h6v6" />
     <path d="M10 14 21 3" />
     <path d="M21 14v5a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5" />
-  `);
-}
-
-function renderKeyboardIcon(): TemplateResult {
-  return renderIcon(svg`
-    <path
-      d="M4 6h16a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2z"
-    />
-    <path d="M8 6v8 M12 6v8 M16 6v8" />
-    <path d="M6 14h12" />
   `);
 }
 

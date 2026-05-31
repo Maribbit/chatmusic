@@ -339,7 +339,7 @@ export function renderAbc(
   });
   const keyboard = createKeyboardController(
     elements.keyboardElement,
-    elements.keyboardToggleButton,
+    elements.keyboardToggleElement,
     keyboardVisibility === "visible",
     playKeyboardPitch,
   );

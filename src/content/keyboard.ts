@@ -1,4 +1,6 @@
 import { LitElement, html, type TemplateResult } from "lit";
+import type { ChatMusicKeyboardToggleElement } from "./keyboard-toggle";
+import { KEYBOARD_TOGGLE_EVENT } from "./keyboard-toggle";
 
 export interface MidiPitch {
   pitch?: number;
@@ -34,25 +36,18 @@ interface KeyboardPitchEventDetail {
 
 export function createKeyboardController(
   keyboardElement: HTMLElement,
-  toggleButton: HTMLButtonElement,
+  toggleElement: HTMLElement,
   initialVisibility: boolean,
   onPitchTrigger?: KeyboardPitchHandler,
 ): KeyboardController {
   const keyboard = keyboardElement as ChatMusicKeyboardElement;
+  const toggle = toggleElement as ChatMusicKeyboardToggleElement;
   let isVisible = initialVisibility;
-
-  const updateToggleButton = () => {
-    const label = isVisible ? "Hide keyboard" : "Show keyboard";
-
-    toggleButton.title = label;
-    toggleButton.setAttribute("aria-label", label);
-    toggleButton.setAttribute("aria-pressed", String(isVisible));
-  };
 
   const setVisible = (nextVisibility: boolean) => {
     isVisible = nextVisibility;
     keyboard.setVisible(isVisible);
-    updateToggleButton();
+    toggle.setVisible(isVisible);
   };
 
   const toggleKeyboard = () => setVisible(!isVisible);
@@ -64,7 +59,7 @@ export function createKeyboardController(
     if (Number.isInteger(pitch)) void onPitchTrigger(pitch);
   };
 
-  toggleButton.addEventListener("click", toggleKeyboard);
+  toggle.addEventListener(KEYBOARD_TOGGLE_EVENT, toggleKeyboard);
   keyboard.addEventListener(KEYBOARD_PITCH_EVENT, triggerKeyboardPitch);
   setVisible(initialVisibility);
 
@@ -76,7 +71,7 @@ export function createKeyboardController(
     clearActiveKeys: () => keyboard.clearActiveKeys(),
     syncSize: () => keyboard.syncSize(),
     dispose: () => {
-      toggleButton.removeEventListener("click", toggleKeyboard);
+      toggle.removeEventListener(KEYBOARD_TOGGLE_EVENT, toggleKeyboard);
       keyboard.removeEventListener(KEYBOARD_PITCH_EVENT, triggerKeyboardPitch);
       keyboard.dispose();
     },
