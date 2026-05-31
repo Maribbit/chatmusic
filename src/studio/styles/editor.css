@@ -1,0 +1,61 @@
+.abc-editor-frame {
+  grid-row: 2;
+  position: relative;
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+  background: var(--studio-code-bg);
+}
+
+#abcInput,
+.abc-highlight-mirror {
+  position: absolute;
+  inset: 0;
+  resize: none;
+  padding: 16px;
+  border: 0;
+  outline: 0;
+  margin: 0;
+  white-space: pre;
+  font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+  font-size: 14px;
+  line-height: 1.55;
+  tab-size: 2;
+}
+
+.abc-editor-frame[data-editor-wrap="enabled"] #abcInput,
+.abc-editor-frame[data-editor-wrap="enabled"] .abc-highlight-mirror {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+#abcInput {
+  z-index: 2;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  overflow: auto;
+  background: transparent;
+  color: var(--studio-code-text);
+}
+
+.abc-highlight-mirror {
+  z-index: 1;
+  overflow: hidden;
+  pointer-events: none;
+  color: transparent;
+  user-select: none;
+}
+
+.abc-highlight-token {
+  border-radius: 3px;
+  background: rgb(125 211 252 / 35%);
+  box-shadow: 0 0 0 1px rgb(125 211 252 / 28%);
+  color: transparent;
+}
+
+#abcInput::selection {
+  background: rgb(125 211 252 / 35%);
+}

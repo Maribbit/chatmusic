@@ -3,7 +3,13 @@
  * Creates sheet music SVG and playback controls below detected code blocks.
  */
 import abcjsAudioStyles from "abcjs/abcjs-audio.css?inline";
-import chatmusicStyles from "./view/styles.css?inline";
+import chatmusicAudioStyles from "./view/styles/audio.css?inline";
+import chatmusicHeaderStyles from "./view/styles/header.css?inline";
+import chatmusicHostStyles from "./view/styles/host.css?inline";
+import chatmusicKeyboardStyles from "./view/styles/keyboard.css?inline";
+import chatmusicLayoutStyles from "./view/styles/layout.css?inline";
+import chatmusicQualityStyles from "./view/styles/quality.css?inline";
+import chatmusicScoreStyles from "./view/styles/score.css?inline";
 import type { ChatMusicCodeToggleElement } from "./components/code-toggle";
 import {
   DEFAULT_CODE_BLOCK_VISIBILITY,
@@ -47,7 +53,16 @@ import {
 } from "./view/score-render";
 
 const instances = new Map<Element, RenderInstance>();
-const shadowStyles = `${abcjsAudioStyles}\n${chatmusicStyles}`;
+const shadowStyles = [
+  abcjsAudioStyles,
+  chatmusicHostStyles,
+  chatmusicHeaderStyles,
+  chatmusicQualityStyles,
+  chatmusicScoreStyles,
+  chatmusicKeyboardStyles,
+  chatmusicAudioStyles,
+  chatmusicLayoutStyles,
+].join("\n");
 
 async function seekToAbcElement(
   instance: RenderInstance,

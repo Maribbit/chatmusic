@@ -1,0 +1,64 @@
+.studio-shell {
+  display: grid;
+  grid-template-columns: minmax(280px, var(--studio-editor-size)) 6px minmax(320px, 1fr);
+  grid-template-rows: auto minmax(0, 1fr);
+  width: 100%;
+  height: 100%;
+}
+
+.studio-layout {
+  display: contents;
+}
+
+.editor-pane,
+.preview-pane {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+  background: var(--studio-surface);
+}
+
+.editor-pane {
+  grid-column: 1;
+  grid-row: 2;
+  grid-template-rows: auto minmax(0, 1fr) auto auto;
+}
+
+.studio-resizer {
+  grid-column: 2;
+  grid-row: 2;
+  position: relative;
+  z-index: 2;
+  background: var(--studio-border);
+  cursor: col-resize;
+  touch-action: none;
+}
+
+.studio-resizer::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 2px;
+  height: 36px;
+  border-radius: 999px;
+  background: var(--studio-border-strong);
+  transform: translate(-50%, -50%);
+}
+
+.studio-resizer:hover,
+.studio-resizer:focus-visible,
+.studio-shell.is-resizing .studio-resizer {
+  background: var(--studio-border-strong);
+  outline: none;
+}
+
+.preview-pane {
+  grid-column: 3;
+  grid-row: 2;
+  display: grid;
+  grid-template-rows: minmax(0, 1fr);
+  min-height: 0;
+}

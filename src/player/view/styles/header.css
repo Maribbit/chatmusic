@@ -1,0 +1,187 @@
+.chatmusic-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 28px;
+  margin-bottom: 8px;
+  font-family: inherit;
+}
+
+.chatmusic-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  color: var(--chatmusic-muted-text);
+  user-select: none;
+  font-weight: 500;
+  line-height: 1.2;
+}
+
+.chatmusic-header-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+chatmusic-tempo {
+  display: inline-flex;
+  align-items: center;
+}
+
+chatmusic-tempo[hidden] {
+  display: none;
+}
+
+chatmusic-code-toggle {
+  display: inline-flex;
+  align-items: center;
+}
+
+chatmusic-fullscreen-toggle {
+  display: inline-flex;
+  align-items: center;
+}
+
+chatmusic-fullscreen-toggle[hidden] {
+  display: none;
+}
+
+chatmusic-keyboard-toggle {
+  display: inline-flex;
+  align-items: center;
+}
+
+.chatmusic-tempo-menu {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.chatmusic-tempo-menu[hidden] {
+  display: none;
+}
+
+.chatmusic-tempo-button,
+.chatmusic-keyboard-toggle-button,
+.chatmusic-export-button,
+.chatmusic-midi-export-button,
+.chatmusic-studio-button,
+.chatmusic-code-toggle-button,
+.chatmusic-fullscreen-button {
+  all: unset;
+  box-sizing: border-box;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  width: 28px;
+  height: 28px;
+  border-radius: 4px;
+  color: var(--chatmusic-muted-text);
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 16px;
+  line-height: 1;
+  user-select: none;
+  transition: background-color 150ms ease, color 150ms ease;
+}
+
+.chatmusic-tempo-button::-webkit-details-marker {
+  display: none;
+}
+
+.chatmusic-keyboard-toggle-button[hidden] {
+  display: none;
+}
+
+:host(:fullscreen) .chatmusic-code-toggle-button {
+  display: none;
+}
+
+.chatmusic-tempo-button:hover,
+.chatmusic-tempo-menu[open] .chatmusic-tempo-button,
+.chatmusic-keyboard-toggle-button:hover,
+.chatmusic-keyboard-toggle-button[aria-pressed="true"],
+.chatmusic-export-button:hover,
+.chatmusic-midi-export-button:hover,
+.chatmusic-studio-button:hover,
+.chatmusic-code-toggle-button:hover,
+.chatmusic-code-toggle-button[aria-pressed="true"],
+.chatmusic-fullscreen-button:hover,
+.chatmusic-fullscreen-button[aria-pressed="true"] {
+  background: var(--chatmusic-audio-bg);
+  color: var(--chatmusic-text);
+}
+
+.chatmusic-tempo-button:focus-visible,
+.chatmusic-keyboard-toggle-button:focus-visible,
+.chatmusic-export-button:focus-visible,
+.chatmusic-midi-export-button:focus-visible,
+.chatmusic-studio-button:focus-visible,
+.chatmusic-code-toggle-button:focus-visible,
+.chatmusic-fullscreen-button:focus-visible {
+  outline: 2px solid var(--chatmusic-audio-thumb);
+  outline-offset: 2px;
+}
+
+.chatmusic-tempo-panel {
+  position: absolute;
+  top: 50%;
+  right: calc(100% + 8px);
+  transform: translateY(-50%);
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px;
+  border-radius: 6px;
+  background: var(--chatmusic-audio-bg);
+  border: 1px solid var(--chatmusic-audio-border);
+  box-shadow: 0 4px 16px rgb(0 0 0 / 20%);
+  white-space: nowrap;
+}
+
+.chatmusic-tempo-readout {
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+  color: var(--chatmusic-text);
+  font-family: inherit;
+  font-size: 11px;
+  line-height: 1;
+}
+
+.chatmusic-tempo-bpm-value {
+  font-size: inherit;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.chatmusic-tempo-unit {
+  color: var(--chatmusic-muted-text);
+  font-size: inherit;
+  font-weight: 600;
+}
+
+.chatmusic-tempo-field {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 4px;
+  color: var(--chatmusic-audio-control);
+  font-family: inherit;
+  font-size: 11px;
+  white-space: nowrap;
+}
+
+.chatmusic-tempo-input {
+  width: 48px;
+  padding: 3px 4px;
+  background: var(--chatmusic-audio-input-bg);
+  color: var(--chatmusic-audio-input-text);
+  border: 1px solid var(--chatmusic-audio-input-border);
+  border-radius: 3px;
+  font: inherit;
+}

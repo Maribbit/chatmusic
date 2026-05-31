@@ -1,0 +1,20 @@
+.chatmusic-score {
+  width: 100%;
+  max-height: min(56vh, 620px);
+  overflow: auto;
+  background: var(--chatmusic-score-bg);
+  color: var(--chatmusic-score-text);
+  border-radius: 0;
+}
+
+.chatmusic-score svg {
+  display: block;
+  max-width: 100%;
+  height: auto;
+}
+
+.chatmusic-score .chatmusic-note-playing,
+.chatmusic-score .chatmusic-note-playing * {
+  fill: var(--chatmusic-playback-highlight) !important;
+  stroke: var(--chatmusic-playback-highlight) !important;
+}
