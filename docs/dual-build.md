@@ -63,6 +63,6 @@ Dual-build safety depends on narrow adapter tests:
 - Studio URL/hash helpers must round-trip ABC source.
 - Extension messages must reject malformed payloads.
 - Studio settings storage must cover both `chrome.storage.sync` and `localStorage`.
-- Soundfont options must keep pointing to the bundled piano soundfont directory.
+- Soundfont asset resolution must keep pointing to the bundled piano soundfont directory.
 
 Add tests near the adapter or module being changed. Run `npm run check` before committing dual-build changes.

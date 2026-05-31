@@ -8,14 +8,27 @@ Before editing:
 
 1. Read [README.md](../README.md), [CONTRIBUTING.md](../CONTRIBUTING.md), and [.github/copilot-instructions.md](../.github/copilot-instructions.md).
 2. Check `git status --short` and preserve user changes.
-3. Identify the smallest project boundary involved: detector, renderer, content entry, popup, background worker, Studio, shared adapter, tooling, or docs.
+3. Read [docs/specs/README.md](specs/README.md) and choose the one relevant domain spec.
+4. Use that spec's `Code & Verification Map` to open the smallest source and test anchors.
+5. Identify the smallest project boundary involved: detector, player, content entry, popup, background worker, Studio, shared adapter, tooling, or docs.
 
 Before committing:
 
 1. Run `npm run check`.
 2. Confirm `dist/`, `node_modules/`, package archives, and signing keys are not staged.
-3. Update [CHANGELOG.md](../CHANGELOG.md) for user-visible behavior or release process changes.
-4. Summarize behavior changes and test coverage in the final response or pull request.
+3. Update the relevant `docs/specs/*.md` map when source/test paths or domain boundaries changed.
+4. Update [CHANGELOG.md](../CHANGELOG.md) for user-visible behavior or release process changes.
+5. Summarize behavior changes and test coverage in the final response or pull request.
+
+## Specs-First Context Economy
+
+The specs directory is the AI context entry point, not an after-the-fact documentation folder.
+
+- Start with the smallest relevant spec, then follow its source and test anchors.
+- Prefer one local read around the owning implementation over scanning unrelated directories.
+- Do not load all of `src/` to understand a task when a spec map already points to the domain.
+- If the spec map is stale, correct it instead of working around it silently.
+- Keep code, tests, and specs synchronized in the same change whenever behavior or ownership changes.
 
 ## Preferred Agent Behavior
 

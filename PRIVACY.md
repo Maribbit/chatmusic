@@ -8,7 +8,7 @@ The content script scans page DOM content to find ABC notation in code blocks. T
 
 ## Storage
 
-The extension may use Chrome extension storage for local preferences such as whether the extension is enabled and, in future versions, a selected soundfont source. These settings are not used for tracking.
+The extension may use Chrome extension storage for local preferences such as whether detection is enabled, the rendered score theme, source-code visibility, and keyboard visibility. These settings are not used for tracking.
 
 ## Network Requests
 

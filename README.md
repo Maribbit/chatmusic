@@ -103,7 +103,8 @@ The web build writes to `dist-web/`. Set `CHATMUSIC_WEB_BASE` when deploying und
 
 ```text
 src/background/   Chrome extension service worker
-src/content/      Page detection, rendering, and content script styles
+src/content/      Page detection and host-page player mounting
+src/player/       Reusable score rendering, playback, controls, and Shadow DOM view
 src/popup/        Extension popup UI
 src/shared/       Cross-target adapters and shared settings helpers
 src/studio/       Studio page shared by the extension and standalone web build
@@ -133,7 +134,7 @@ Bundled soundfont attribution is documented in [public/THIRD_PARTY_NOTICES.txt](
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for the development workflow, commit conventions, and required checks.
 
-For AI-assisted changes, see [docs/ai-assisted-development.md](docs/ai-assisted-development.md) and [.github/copilot-instructions.md](.github/copilot-instructions.md).
+For AI-assisted changes, start with [docs/specs/README.md](docs/specs/README.md), then follow [docs/ai-assisted-development.md](docs/ai-assisted-development.md) and [.github/copilot-instructions.md](.github/copilot-instructions.md).
 
 ## Release
 
