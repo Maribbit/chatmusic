@@ -1,5 +1,5 @@
 import abcjs from "abcjs";
-import { getAssetUrl } from "../shared/assets";
+import { getAssetUrl } from "../../shared/assets";
 
 export const LOCAL_PIANO_INSTRUMENT = "acoustic_grand_piano";
 

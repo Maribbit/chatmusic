@@ -6,7 +6,7 @@ import {
   getTuneBaseBpm,
   parseWarpPercent,
   type TempoTune,
-} from "./tempo";
+} from "../playback/tempo";
 
 export interface TempoTimingEvent {
   millisecondsPerMeasure?: number;
@@ -14,7 +14,10 @@ export interface TempoTimingEvent {
 
 export interface TempoControl {
   reset(): void;
-  connect(nativeTempoInput: HTMLInputElement, tune: TempoTune | undefined): void;
+  connect(
+    nativeTempoInput: HTMLInputElement,
+    tune: TempoTune | undefined,
+  ): void;
   update(event?: TempoTimingEvent): void;
 }
 
@@ -153,7 +156,9 @@ export class ChatMusicTempoElement extends LitElement {
 
     if (this.nativeTempoInput) {
       this.nativeTempoInput.value = this.inputValue;
-      this.nativeTempoInput.dispatchEvent(new Event("change", { bubbles: true }));
+      this.nativeTempoInput.dispatchEvent(
+        new Event("change", { bubbles: true }),
+      );
     }
 
     this.emitWarpChange(warpPercent);

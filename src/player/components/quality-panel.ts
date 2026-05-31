@@ -1,5 +1,5 @@
 import { LitElement, html, type TemplateResult } from "lit";
-import type { AbcDiagnostic } from "../shared/abc-quality/diagnostics";
+import type { AbcDiagnostic } from "../../shared/abc-quality/diagnostics";
 
 export const QUALITY_COPY_EVENT = "chatmusic-quality-copy";
 
@@ -32,10 +32,8 @@ export class ChatMusicQualityElement extends LitElement {
     return html`
       <div class="chatmusic-quality-header">
         <strong class="chatmusic-quality-summary">
-          ${this.diagnostics.length} ABC parser issue${this.diagnostics
-            .length === 1
-            ? ""
-            : "s"} found.
+          ${this.diagnostics.length} ABC parser
+          issue${this.diagnostics.length === 1 ? "" : "s"} found.
         </strong>
         <button
           class="chatmusic-quality-copy-button"
@@ -46,7 +44,9 @@ export class ChatMusicQualityElement extends LitElement {
         </button>
       </div>
       <ul class="chatmusic-quality-list">
-        ${this.diagnostics.map((diagnostic) => this.renderDiagnostic(diagnostic))}
+        ${this.diagnostics.map((diagnostic) =>
+          this.renderDiagnostic(diagnostic),
+        )}
       </ul>
     `;
   }

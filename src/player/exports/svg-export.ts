@@ -1,4 +1,4 @@
-import { getAbcDownloadFilename } from "../shared/filename";
+import { getAbcDownloadFilename } from "../../shared/filename";
 
 export function getScoreSvg(scoreElement: HTMLElement): SVGSVGElement | null {
   const svg = scoreElement.querySelector("svg");

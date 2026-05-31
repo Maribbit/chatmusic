@@ -4,8 +4,8 @@
  */
 import abcjs from "abcjs";
 import abcjsAudioStyles from "abcjs/abcjs-audio.css?inline";
-import chatmusicStyles from "./styles.css?inline";
-import type { ChatMusicCodeToggleElement } from "./code-toggle";
+import chatmusicStyles from "./view/styles.css?inline";
+import type { ChatMusicCodeToggleElement } from "./components/code-toggle";
 import {
   DEFAULT_CODE_BLOCK_VISIBILITY,
   DEFAULT_KEYBOARD_VISIBILITY,
@@ -24,21 +24,31 @@ import {
   downloadMidi,
   getMidiDownloadFilename,
 } from "../shared/abc-midi-export";
-import type { ChatMusicQualityElement } from "./quality-panel";
+import type { ChatMusicQualityElement } from "./components/quality-panel";
 import {
   createDurationControl,
   type DurationControl,
-} from "./duration-control";
-import { getTuneDurationSeconds } from "./duration";
+} from "./components/duration-control";
+import { getTuneDurationSeconds } from "./playback/duration";
 import {
   createKeyboardController,
   type KeyboardController,
   type MidiPitch,
-} from "./keyboard";
-import { downloadSvg, getScoreSvg, getSvgDownloadFilename } from "./svg-export";
-import { getLocalPianoSynthOptions, playLocalPianoPitch } from "./soundfont";
-import { createTempoControl, type TempoControl } from "./tempo-control";
-import { applyRenderViewTheme, createRenderView } from "./view";
+} from "./components/keyboard";
+import {
+  downloadSvg,
+  getScoreSvg,
+  getSvgDownloadFilename,
+} from "./exports/svg-export";
+import {
+  getLocalPianoSynthOptions,
+  playLocalPianoPitch,
+} from "./playback/soundfont";
+import {
+  createTempoControl,
+  type TempoControl,
+} from "./components/tempo-control";
+import { applyRenderViewTheme, createRenderView } from "./view/view";
 
 export interface RenderInstance {
   container: HTMLElement;

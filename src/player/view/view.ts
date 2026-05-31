@@ -1,10 +1,10 @@
 import { html, render, svg, type TemplateResult } from "lit";
-import type { ThemeMode } from "../shared/settings";
-import { CODE_TOGGLE_EVENT } from "./code-toggle";
-import type { ChatMusicFullscreenToggleElement } from "./fullscreen-toggle";
-import "./fullscreen-toggle";
-import "./keyboard-toggle";
-import { QUALITY_COPY_EVENT } from "./quality-panel";
+import type { ThemeMode } from "../../shared/settings";
+import { CODE_TOGGLE_EVENT } from "../components/code-toggle";
+import type { ChatMusicFullscreenToggleElement } from "../components/fullscreen-toggle";
+import "../components/fullscreen-toggle";
+import "../components/keyboard-toggle";
+import { QUALITY_COPY_EVENT } from "../components/quality-panel";
 import { resolveTheme } from "./theme";
 
 export interface RenderViewElements {
@@ -234,4 +234,3 @@ function setupButtonAction(
   button.addEventListener("click", handler);
   return () => button.removeEventListener("click", handler);
 }
-

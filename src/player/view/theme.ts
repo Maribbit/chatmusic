@@ -2,7 +2,7 @@ import {
   DEFAULT_THEME_MODE,
   type ResolvedTheme,
   type ThemeMode,
-} from "../shared/settings";
+} from "../../shared/settings";
 
 interface RgbaColor {
   red: number;
@@ -16,7 +16,7 @@ const MIN_VISIBLE_ALPHA = 0.01;
 
 export function resolveTheme(
   element: Element,
-  themeMode: ThemeMode = DEFAULT_THEME_MODE
+  themeMode: ThemeMode = DEFAULT_THEME_MODE,
 ): ResolvedTheme {
   if (themeMode === "light" || themeMode === "dark") return themeMode;
   return detectElementTheme(element);
@@ -26,7 +26,7 @@ export function detectElementTheme(element: Element): ResolvedTheme {
   const preferredTheme = getPreferredTheme();
   const effectiveBackground = getEffectiveBackgroundColor(
     element,
-    preferredTheme
+    preferredTheme,
   );
 
   if (!effectiveBackground) return preferredTheme;
@@ -38,16 +38,15 @@ export function detectElementTheme(element: Element): ResolvedTheme {
 
 function getEffectiveBackgroundColor(
   element: Element,
-  fallbackTheme: ResolvedTheme
+  fallbackTheme: ResolvedTheme,
 ): RgbaColor | null {
   const colors: RgbaColor[] = [];
   const ownerWindow = element.ownerDocument.defaultView;
   let current: Element | null = element;
 
   while (current) {
-    const backgroundColor = ownerWindow
-      ?.getComputedStyle(current)
-      .backgroundColor;
+    const backgroundColor =
+      ownerWindow?.getComputedStyle(current).backgroundColor;
     const parsedColor = backgroundColor
       ? parseCssRgbColor(backgroundColor)
       : null;
@@ -112,7 +111,10 @@ function parseAlphaChannel(value: string): number | null {
   return Number.isFinite(alpha) ? clamp(alpha, 0, 1) : null;
 }
 
-function compositeOver(foreground: RgbaColor, background: RgbaColor): RgbaColor {
+function compositeOver(
+  foreground: RgbaColor,
+  background: RgbaColor,
+): RgbaColor {
   const alpha = foreground.alpha + background.alpha * (1 - foreground.alpha);
   if (alpha <= 0) return { red: 0, green: 0, blue: 0, alpha: 0 };
 

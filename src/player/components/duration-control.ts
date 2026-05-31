@@ -1,5 +1,8 @@
 import { LitElement, html, type TemplateResult } from "lit";
-import { formatDuration, getEffectiveDurationSeconds } from "./duration";
+import {
+  formatDuration,
+  getEffectiveDurationSeconds,
+} from "../playback/duration";
 
 export interface DurationControl {
   mount(audioElement: HTMLElement): void;
