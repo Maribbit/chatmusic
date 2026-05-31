@@ -58,9 +58,6 @@ const qualityPanel = document.getElementById("qualityPanel") as HTMLElement;
 const themeModeSelect = document.getElementById(
   "themeModeSelect",
 ) as HTMLSelectElement;
-const checkAbcButton = document.getElementById(
-  "checkAbcButton",
-) as HTMLButtonElement;
 const autoCheckInput = document.getElementById(
   "autoCheckInput",
 ) as HTMLInputElement;
@@ -113,12 +110,10 @@ async function initializeStudio(): Promise<void> {
     updateSourceStats();
     window.localStorage.setItem(STUDIO_SOURCE_STORAGE_KEY, input.value);
     hideQualityPanel();
+    renderStatus.textContent = "Checking...";
     scheduleRender();
   });
 
-  checkAbcButton.addEventListener("click", () => {
-    checkCurrentAbcSource("manual");
-  });
   autoCheckInput.addEventListener("change", () => {
     void updateAbcAutoCheckSetting(
       autoCheckInput.checked ? "enabled" : "disabled",
@@ -173,13 +168,7 @@ async function updateAbcAutoCheckSetting(
   currentAbcAutoCheck = abcAutoCheck;
   autoCheckInput.checked = abcAutoCheck === "enabled";
   await saveStudioAbcAutoCheck(abcAutoCheck);
-
-  if (isAutoCheckEnabled()) {
-    checkCurrentAbcSource("auto");
-  } else {
-    hideQualityPanel();
-    renderStatus.textContent = "Auto check off";
-  }
+  checkCurrentAbcSource();
 }
 
 function restoreSplitSizes(): void {
@@ -311,26 +300,23 @@ function updateSourceStats(): void {
   const lineCount =
     input.value.length === 0 ? 0 : input.value.split("\n").length;
   sourceStats.textContent = `${lineCount} lines, ${characterCount} chars`;
-  checkAbcButton.disabled = characterCount === 0;
   copySourceButton.disabled = characterCount === 0;
   exportAbcButton.disabled = characterCount === 0;
 }
 
-function checkCurrentAbcSource(mode: "auto" | "manual"): void {
+function checkCurrentAbcSource(): void {
   const report = validateAbcSource(input.value);
-
-  if (mode === "auto" && report.status === "ok") {
-    hideQualityPanel();
-    return;
-  }
-
-  renderQualityReport(report);
   renderStatus.textContent = getQualityStatusText(report);
+
+  if (isAutoCheckEnabled() && report.status !== "ok") {
+    renderQualityReport(report);
+  } else {
+    hideQualityPanel();
+  }
 }
 
 function runAutoCheck(): void {
-  if (!isAutoCheckEnabled()) return;
-  checkCurrentAbcSource("auto");
+  checkCurrentAbcSource();
 }
 
 function isAutoCheckEnabled(): boolean {

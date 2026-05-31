@@ -17,46 +17,61 @@
       </div>
 
       <div class="studio-actions" aria-label="Studio actions">
-        <label class="studio-theme-field" for="themeModeSelect">
-          <span>Theme</span>
-          <select id="themeModeSelect">
+        <div class="external-links">
+          <a class="ghost-link" href="https://wim.vree.org/js/xml2abc-js_index.html" target="_blank" rel="noopener noreferrer" title="MusicXML to ABC conversion tool">MusicXML &rarr; ABC</a>
+          <a class="ghost-link" href="https://wim.vree.org/svgParse/abc2xml.html" target="_blank" rel="noopener noreferrer" title="ABC to MusicXML conversion tool">ABC &rarr; MusicXML</a>
+        </div>
+        
+        <div class="header-divider"></div>
+
+        <label class="studio-theme-field" for="themeModeSelect" title="Theme">
+          <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg>
+          <select id="themeModeSelect" aria-label="Theme mode">
             <option value="auto">Auto</option>
             <option value="light">Light</option>
             <option value="dark">Dark</option>
           </select>
         </label>
-        <button class="secondary-button" id="importAbcButton" type="button">Open ABC</button>
-        <input
-          id="abcFileInput"
-          type="file"
-          accept=".abc,.txt,text/vnd.abc,text/plain"
-          hidden
-        >
-        <button class="secondary-button" id="exportAbcButton" type="button">Save ABC</button>
-        <a class="secondary-button" href="https://wim.vree.org/js/xml2abc-js_index.html" target="_blank" rel="noopener noreferrer">MusicXML to ABC</a>
-        <a class="secondary-button" href="https://wim.vree.org/svgParse/abc2xml.html" target="_blank" rel="noopener noreferrer">ABC to MusicXML</a>
-        <button class="secondary-button" id="loadExampleButton" type="button">Example</button>
-        <button class="secondary-button" id="clearButton" type="button">Clear</button>
       </div>
     </header>
 
     <div class="studio-layout">
       <section class="editor-pane" aria-labelledby="editorTitle">
         <div class="pane-header">
-          <h2 id="editorTitle">ABC Source</h2>
+          <div class="pane-tools">
+            <h2 id="editorTitle" class="visually-hidden">ABC Source</h2>
+            <button class="icon-button" id="importAbcButton" type="button" aria-label="Open ABC file" title="Open ABC file">
+              <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M4 20h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.93a2 2 0 0 1-1.66-.9l-.82-1.2A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13c0 1.1.9 2 2 2Z"/></svg>
+            </button>
+            <input
+              id="abcFileInput"
+              type="file"
+              accept=".abc,.txt,text/vnd.abc,text/plain"
+              hidden
+            >
+            <button class="icon-button" id="exportAbcButton" type="button" aria-label="Save ABC file" title="Save ABC file">
+              <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></svg>
+            </button>
+            <div class="header-divider"></div>
+            <button class="icon-button" id="loadExampleButton" type="button" aria-label="Load Example" title="Load Example">
+              <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/><path d="M10 13l-2 2 2 2"/><path d="M14 17l2-2-2-2"/></svg>
+            </button>
+            <button class="icon-button" id="clearButton" type="button" aria-label="Clear Editor" title="Clear Editor">
+              <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/></svg>
+            </button>
+          </div>
           <div class="pane-tools">
             <span id="renderStatus" aria-live="polite">Ready</span>
             <span id="sourceStats" aria-live="polite">0 chars</span>
-            <label class="auto-check-field" for="autoCheckInput">
-              <input id="autoCheckInput" type="checkbox">
-              <span>Auto</span>
+            <div class="header-divider"></div>
+            <button class="icon-button" id="copySourceButton" type="button" aria-label="Copy Source" title="Copy Source">
+              <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>
+            </button>
+            <label class="auto-check-field icon-button" for="autoCheckInput" title="Toggle Diagnostics Panel">
+              <input id="autoCheckInput" type="checkbox" title="Toggle Diagnostics Panel">
+              <span class="visually-hidden">Diagnostics</span>
+              <svg class="auto-check-icon" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" x2="12" y1="9" y2="13"/><line x1="12" x2="12.01" y1="17" y2="17"/></svg>
             </label>
-            <button class="secondary-button compact-button" id="checkAbcButton" type="button">
-              Check
-            </button>
-            <button class="secondary-button compact-button" id="copySourceButton" type="button">
-              Copy
-            </button>
           </div>
         </div>
         <div class="quality-panel" id="qualityPanel" aria-live="polite" hidden></div>

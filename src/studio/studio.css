@@ -2,11 +2,15 @@
   color-scheme: light;
   --studio-bg: #f4f6f8;
   --studio-surface: #ffffff;
+  --studio-surface-hover: #f1f5f9;
   --studio-panel: #f9fafb;
   --studio-text: #1f2937;
+  --studio-text-strong: #0f172a;
+  --studio-text-muted: #64748b;
   --studio-muted: #64748b;
   --studio-border: #d7dde5;
   --studio-border-strong: #aeb8c5;
+  --studio-focus-ring: #60a5fa;
   --studio-accent: #1f6feb;
   --studio-accent-hover: #1158c7;
   --studio-accent-text: #ffffff;
@@ -22,11 +26,15 @@
   color-scheme: dark;
   --studio-bg: #202124;
   --studio-surface: #17191c;
+  --studio-surface-hover: #26292d;
   --studio-panel: #202329;
   --studio-text: #eceff3;
+  --studio-text-strong: #f8fafc;
+  --studio-text-muted: #94a3b8;
   --studio-muted: #b4bac1;
   --studio-border: #34373d;
   --studio-border-strong: #4c5562;
+  --studio-focus-ring: #38bdf8;
   --studio-accent: #7dd3fc;
   --studio-accent-hover: #38bdf8;
   --studio-accent-text: #0f1115;
@@ -77,7 +85,7 @@ button {
 }
 
 .studio-header {
-  grid-column: 1;
+  grid-column: 1 / -1;
   grid-row: 1;
   display: flex;
   align-items: center;
@@ -166,6 +174,77 @@ button {
   display: contents;
 }
 
+/* Layout Utilities */
+.header-divider {
+  width: 1px;
+  height: 20px;
+  background-color: var(--studio-border);
+  margin: 0 4px;
+}
+
+/* Icon Buttons */
+.icon-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--studio-text);
+  cursor: pointer;
+  transition: all 0.15s ease-out;
+}
+
+.icon-button:hover {
+  background: var(--studio-surface-hover);
+  color: var(--studio-text-strong);
+}
+
+.icon-button:active {
+  background: var(--studio-border);
+}
+
+.icon-button:focus-visible {
+  outline: 2px solid var(--studio-focus-ring);
+  outline-offset: -1px;
+}
+
+/* Ghost Links */
+.external-links {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.ghost-link {
+  font-size: 0.85rem;
+  color: var(--studio-text-muted);
+  text-decoration: none;
+  padding: 4px 8px;
+  border-radius: 4px;
+  transition: all 0.1s ease;
+}
+
+.ghost-link:hover {
+  color: var(--studio-text-strong);
+  background: var(--studio-surface-hover);
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border-width: 0;
+}
+
 .editor-pane,
 .preview-pane {
   display: grid;
@@ -182,7 +261,7 @@ button {
 
 .studio-resizer {
   grid-column: 2;
-  grid-row: 1 / span 2;
+  grid-row: 2;
   position: relative;
   z-index: 2;
   background: var(--studio-border);
@@ -211,7 +290,7 @@ button {
 
 .preview-pane {
   grid-column: 3;
-  grid-row: 1 / span 2;
+  grid-row: 2;
   display: grid;
   grid-template-rows: minmax(0, 1fr);
   min-height: 0;
@@ -238,16 +317,36 @@ button {
 .pane-tools {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 4px;
+}
+
+.pane-tools span[aria-live="polite"] {
+  margin: 0 4px;
 }
 
 .auto-check-field {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
+  justify-content: center;
+  cursor: pointer;
   color: var(--studio-muted);
-  font-size: 12px;
-  white-space: nowrap;
+}
+
+.auto-check-field input[type="checkbox"] {
+  position: absolute;
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.auto-check-field input[type="checkbox"]:checked ~ .auto-check-icon {
+  color: var(--studio-accent);
+  stroke-width: 2.5;
+}
+
+.auto-check-field input[type="checkbox"]:focus-visible ~ .auto-check-icon {
+  outline: 2px solid var(--studio-focus-ring);
+  border-radius: 4px;
 }
 
 .auto-check-field input {
