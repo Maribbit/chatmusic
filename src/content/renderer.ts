@@ -23,6 +23,7 @@ import {
   downloadMidi,
   getMidiDownloadFilename,
 } from "../shared/abc-midi-export";
+import type { ChatMusicQualityElement } from "./quality-panel";
 import {
   createDurationControl,
   type DurationControl,
@@ -36,21 +37,14 @@ import {
 import { downloadSvg, getScoreSvg, getSvgDownloadFilename } from "./svg-export";
 import { getLocalPianoSynthOptions, playLocalPianoPitch } from "./soundfont";
 import { createTempoControl, type TempoControl } from "./tempo-control";
-import {
-  applyRenderViewTheme,
-  clearQualityDiagnostics,
-  createRenderView,
-  renderQualityDiagnostics,
-} from "./view";
+import { applyRenderViewTheme, createRenderView } from "./view";
 
 export interface RenderInstance {
   container: HTMLElement;
   scoreElement: HTMLElement;
   keyboard: KeyboardController;
   audioElement: HTMLElement;
-  qualityPanelElement: HTMLElement;
-  qualitySummaryElement: HTMLElement;
-  qualityListElement: HTMLElement;
+  qualityElement: ChatMusicQualityElement;
   tempoControl: TempoControl;
   durationControl: DurationControl;
   codeToggleButton: HTMLButtonElement;
@@ -368,9 +362,7 @@ export function renderAbc(
     scoreElement: elements.scoreElement,
     keyboard,
     audioElement: elements.audioElement,
-    qualityPanelElement: elements.qualityPanelElement,
-    qualitySummaryElement: elements.qualitySummaryElement,
-    qualityListElement: elements.qualityListElement,
+    qualityElement: elements.qualityElement as ChatMusicQualityElement,
     tempoControl,
     durationControl,
     codeToggleButton: elements.codeToggleButton,
@@ -435,16 +427,9 @@ function copyQualityFeedback(instance: RenderInstance): void {
 
 function updateQualityPanel(instance: RenderInstance): void {
   const report = validateAbcSource(instance.abcText);
-
-  if (report.status === "ok") {
-    instance.qualityPanelElement.hidden = true;
-    clearQualityDiagnostics(instance.qualityListElement);
-    return;
-  }
-
-  instance.qualityPanelElement.hidden = false;
-  instance.qualitySummaryElement.textContent = `${report.diagnostics.length} ABC parser issue${report.diagnostics.length === 1 ? "" : "s"} found.`;
-  renderQualityDiagnostics(instance.qualityListElement, report.diagnostics);
+  instance.qualityElement.setDiagnostics(
+    report.status === "ok" ? [] : report.diagnostics,
+  );
 }
 
 function applyKeyboardVisibility(

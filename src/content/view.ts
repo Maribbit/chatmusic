@@ -1,6 +1,6 @@
 import { html, render, svg, type TemplateResult } from "lit";
-import type { AbcDiagnostic } from "../shared/abc-quality/diagnostics";
 import type { ThemeMode } from "../shared/settings";
+import { QUALITY_COPY_EVENT } from "./quality-panel";
 import { resolveTheme } from "./theme";
 
 export interface RenderViewElements {
@@ -9,9 +9,7 @@ export interface RenderViewElements {
   keyboardElement: HTMLElement;
   keyboardToggleButton: HTMLButtonElement;
   audioElement: HTMLElement;
-  qualityPanelElement: HTMLElement;
-  qualitySummaryElement: HTMLElement;
-  qualityListElement: HTMLElement;
+  qualityElement: HTMLElement;
   tempoElement: HTMLElement;
   codeToggleButton: HTMLButtonElement;
   cleanup: () => void;
@@ -66,15 +64,7 @@ export function createRenderView(
       ".chatmusic-keyboard-toggle-button",
     ) as HTMLButtonElement,
     audioElement: container.querySelector(".chatmusic-audio") as HTMLElement,
-    qualityPanelElement: container.querySelector(
-      ".chatmusic-quality-panel",
-    ) as HTMLElement,
-    qualitySummaryElement: container.querySelector(
-      ".chatmusic-quality-summary",
-    ) as HTMLElement,
-    qualityListElement: container.querySelector(
-      ".chatmusic-quality-list",
-    ) as HTMLElement,
+    qualityElement: container.querySelector("chatmusic-quality") as HTMLElement,
     tempoElement: container.querySelector("chatmusic-tempo") as HTMLElement,
     codeToggleButton: container.querySelector(
       ".chatmusic-code-toggle-button",
@@ -93,40 +83,6 @@ export function applyRenderViewTheme(
   host.dataset.chatmusicTheme = resolvedTheme;
   host.dataset.chatmusicThemeMode = themeMode;
   host.style.colorScheme = resolvedTheme;
-}
-
-export function renderQualityDiagnostics(
-  listElement: HTMLElement,
-  diagnostics: AbcDiagnostic[],
-): void {
-  render(
-    html`${diagnostics.map((diagnostic) => {
-      const location = formatDiagnosticLocation(diagnostic);
-
-      return html`
-        <li class="chatmusic-quality-item">
-          <span class="chatmusic-quality-title">
-            ${diagnostic.severity.toUpperCase()}: ${diagnostic.title}
-          </span>
-          <span>${diagnostic.message}</span>
-          ${location
-            ? html`<span class="chatmusic-quality-location">${location}</span>`
-            : null}
-        </li>
-      `;
-    })}`,
-    listElement,
-  );
-}
-
-export function clearQualityDiagnostics(listElement: HTMLElement): void {
-  render(null, listElement);
-}
-
-function formatDiagnosticLocation(diagnostic: AbcDiagnostic): string | null {
-  if (diagnostic.line === undefined) return null;
-  if (diagnostic.column === undefined) return `Line ${diagnostic.line}`;
-  return `Line ${diagnostic.line}, column ${diagnostic.column}`;
 }
 
 function renderContainerTemplate(): TemplateResult {
@@ -188,15 +144,11 @@ function renderContainerTemplate(): TemplateResult {
         </button>
       </div>
     </div>
-    <div class="chatmusic-quality-panel" aria-live="polite" hidden>
-      <div class="chatmusic-quality-header">
-        <strong class="chatmusic-quality-summary"></strong>
-        <button class="chatmusic-quality-copy-button" type="button">
-          Copy feedback
-        </button>
-      </div>
-      <ul class="chatmusic-quality-list"></ul>
-    </div>
+    <chatmusic-quality
+      class="chatmusic-quality-panel"
+      aria-live="polite"
+      hidden
+    ></chatmusic-quality>
     <div class="chatmusic-score"></div>
     <chatmusic-keyboard class="chatmusic-keyboard"></chatmusic-keyboard>
     <div class="chatmusic-audio"></div>
@@ -277,8 +229,9 @@ function setupRenderViewActions(
   handlers: RenderViewHandlers,
 ): () => void {
   const cleanupCallbacks = [
-    setupButtonAction(
-      container.querySelector(".chatmusic-quality-copy-button"),
+    setupElementAction(
+      container.querySelector("chatmusic-quality"),
+      QUALITY_COPY_EVENT,
       handlers.onCopyQualityFeedback,
     ),
     setupButtonAction(
@@ -303,6 +256,17 @@ function setupRenderViewActions(
   return () => {
     for (const cleanup of cleanupCallbacks) cleanup();
   };
+}
+
+function setupElementAction(
+  element: Element | null,
+  eventName: string,
+  handler: (() => void) | undefined,
+): () => void {
+  if (!element || !handler) return () => {};
+
+  element.addEventListener(eventName, handler);
+  return () => element.removeEventListener(eventName, handler);
 }
 
 function setupButtonAction(
