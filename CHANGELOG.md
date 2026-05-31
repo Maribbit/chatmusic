@@ -6,6 +6,10 @@ This project follows a lightweight [Keep a Changelog](https://keepachangelog.com
 
 ## [Unreleased]
 
+### Changed
+
+- Moved reusable score rendering, playback, and player controls from `src/content` into a dedicated `src/player` domain.
+
 ## [0.4.0] - 2026-05-31
 
 ### Added

@@ -4,12 +4,12 @@
 
 - Use TypeScript with the existing strict compiler settings.
 - Use ESLint only for quality and lightweight style checks. Do not add Prettier unless the project explicitly decides to adopt it.
-- Keep changes scoped to the relevant boundary: detector, renderer, content entry, popup, background worker, tooling, or docs.
+- Keep changes scoped to the relevant boundary: detector, player, content entry, popup, background worker, tooling, or docs.
 
 ## Architecture
 
-- `src/content/detector.ts` owns ABC detection and should stay testable without browser extension APIs.
-- `src/content/renderer.ts` owns abcjs rendering and playback setup.
+- `src/content/detectors/` owns ABC detection and should stay testable without browser extension APIs.
+- `src/player/` owns reusable score rendering, playback setup, player controls, and Shadow DOM view code.
 - `src/content/index.ts` owns DOM scanning, mutation observation, and content-script state.
 - `src/popup/` owns user-facing extension settings.
 - `src/background/` owns extension-wide service worker behavior.

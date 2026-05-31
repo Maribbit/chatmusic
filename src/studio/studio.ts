@@ -25,7 +25,7 @@ import {
   removeRender,
   type RenderInstance,
   type SourceHighlightRange,
-} from "../content/renderer";
+} from "../player/renderer";
 import {
   loadStudioSettings,
   saveStudioAbcAutoCheck,

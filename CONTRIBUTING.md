@@ -54,7 +54,7 @@ The production build step covers both the Chrome extension and standalone Studio
 
 - Use TypeScript in strict mode.
 - Use ESLint only. Do not add Prettier unless the project explicitly decides to adopt it later.
-- Prefer small functions around the existing `detector`, `renderer`, content script, popup, and service worker boundaries.
+- Prefer small functions around the existing `detectors`, `player`, content script, popup, and service worker boundaries.
 - Keep extension/web cross-target code behind the adapters documented in [docs/dual-build.md](docs/dual-build.md).
 - Do not commit `dist/`, `dist-web/`, `node_modules`, Chrome signing keys, or packaged extension archives.
 

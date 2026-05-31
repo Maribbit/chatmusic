@@ -12,7 +12,7 @@ import {
   updateRenderThemes,
   updateCodeBlockVisibility,
   updateKeyboardVisibility,
-} from "./renderer";
+} from "../player/renderer";
 import {
   CODE_BLOCK_VISIBILITY_STORAGE_KEY,
   DEFAULT_CODE_BLOCK_VISIBILITY,
