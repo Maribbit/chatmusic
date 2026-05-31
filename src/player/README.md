@@ -14,9 +14,10 @@ This module owns the reusable score player used by both the browser content scri
 - `renderer.ts` is the public orchestration facade used by `src/content/` and `src/studio/`.
 - `types.ts` contains renderer-facing player contracts shared by internal player modules.
 - `components/` contains Lit custom elements and DOM control adapters used by the player view.
-- `playback/` contains playback-adjacent pure logic, timing/source-highlight mapping, score highlight synchronization, and audio asset integration.
-- `view/` contains Shadow DOM composition, theme resolution, and player CSS.
-- `exports/` contains player-specific export helpers.
+- `playback/` contains synth setup, progress seeking, timing/source-highlight mapping, score highlight synchronization, tempo/duration helpers, and audio asset integration.
+- `view/` contains Shadow DOM composition, score rendering/layout helpers, theme resolution, and player CSS.
+- `exports/` contains player-specific export helpers and player export button actions.
+- `quality.ts` contains rendered-score quality feedback actions.
 
 ## Non-Responsibilities
 
@@ -24,4 +25,4 @@ This module owns the reusable score player used by both the browser content scri
 - Observing host-page DOM changes or extension enabled state. That belongs in `src/content/index.ts`.
 - Studio editor state, layout, file import, and source persistence. Those belong in `src/studio/`.
 
-The current `renderer.ts` file is still the main orchestration point, but pure timing and highlight helpers have moved into `playback/`. Future refactors should keep shrinking it by behavior while preserving this module boundary: visual rendering, playback setup, exports, and render-instance lifecycle. Keep `renderer.ts` as the stable entry point unless a new public player API is intentionally designed.
+`renderer.ts` should stay the stable public facade. Keep feature work in the focused player modules first, and use `renderer.ts` to coordinate render-instance lifecycle and exported player-wide update/remove APIs unless a new public player API is intentionally designed.

@@ -2,7 +2,6 @@
  * ABC notation renderer using abcjs.
  * Creates sheet music SVG and playback controls below detected code blocks.
  */
-import abcjs from "abcjs";
 import abcjsAudioStyles from "abcjs/abcjs-audio.css?inline";
 import chatmusicStyles from "./view/styles.css?inline";
 import type { ChatMusicCodeToggleElement } from "./components/code-toggle";
@@ -14,36 +13,19 @@ import {
   type KeyboardVisibility,
   type ThemeMode,
 } from "../shared/settings";
-import {
-  formatAbcQualityReportForAi,
-  validateAbcSource,
-} from "../shared/abc-quality/validate";
 import { getExtensionRuntime } from "../shared/extension-runtime";
 import { createOpenStudioMessage } from "../shared/messages";
-import {
-  downloadMidi,
-  getMidiDownloadFilename,
-} from "../shared/abc-midi-export";
 import type { ChatMusicQualityElement } from "./components/quality-panel";
 import { createDurationControl } from "./components/duration-control";
-import { getTuneDurationSeconds } from "./playback/duration";
 import { createKeyboardController } from "./components/keyboard";
-import {
-  downloadSvg,
-  getScoreSvg,
-  getSvgDownloadFilename,
-} from "./exports/svg-export";
-import {
-  getLocalPianoSynthOptions,
-  playLocalPianoPitch,
-} from "./playback/soundfont";
+import { exportMidi, exportScore } from "./exports/actions";
+import { playLocalPianoPitch } from "./playback/soundfont";
 import { createTempoControl } from "./components/tempo-control";
-import {
-  clearPlaybackHighlight,
-  highlightTimingEvent,
-  setupKeyboard,
-} from "./playback/highlight";
-import { getSeekPercentForElement, getTimingEvents } from "./playback/timing";
+import { seekPlaybackToPercent } from "./playback/progress";
+import { clearPlaybackHighlight, setupKeyboard } from "./playback/highlight";
+import { initSynth } from "./playback/synth";
+import { getSeekPercentForElement } from "./playback/timing";
+import { copyQualityFeedback, updateQualityPanel } from "./quality";
 export { getSourceHighlightRangesForTest } from "./playback/source-highlight";
 export type {
   RenderAbcOptions,
@@ -56,76 +38,16 @@ import type {
   RenderAbcOptions,
   RenderInstance,
   SeekableSynthControl,
-  TimingEvent,
 } from "./types";
+import {
+  disposeScoreResizeObserver,
+  renderScore,
+  setupScoreResizeObserver,
+  shouldRerenderScoreForLayout,
+} from "./view/score-render";
 
 const instances = new Map<Element, RenderInstance>();
 const shadowStyles = `${abcjsAudioStyles}\n${chatmusicStyles}`;
-const DEFAULT_STAFF_WIDTH = 740;
-const MIN_STAFF_WIDTH = 320;
-const SCORE_WIDTH_PADDING = 24;
-const STAFF_WIDTH_CHANGE_THRESHOLD = 24;
-const SCORE_RESIZE_DEBOUNCE_MS = 180;
-const SCORE_WRAP_OPTIONS: abcjs.Wrap = {
-  preferredMeasuresPerLine: 4,
-  minSpacing: 1.2,
-  maxSpacing: 2.4,
-  lastLineLimit: 1.4,
-  minSpacingLimit: 1,
-};
-
-/**
- * Initialize the abcjs SynthController for playback.
- * This creates the full built-in audio UI (play/pause, progress, warp, restart).
- */
-async function initSynth(instance: RenderInstance): Promise<void> {
-  if (!instance.visualObj || instance.visualObj.length === 0) return;
-
-  const audioEl = instance.audioElement;
-  instance.progressDragCleanup?.();
-  instance.progressDragCleanup = null;
-  instance.tempoControl.reset();
-  instance.durationControl.reset();
-
-  if (!abcjs.synth.supportsAudio()) {
-    audioEl.innerHTML =
-      '<p class="chatmusic-no-audio">Audio playback not supported in this browser.</p>';
-    return;
-  }
-
-  try {
-    const synthControl = new abcjs.synth.SynthController();
-    synthControl.load(audioEl, createCursorControl(instance), {
-      displayRestart: true,
-      displayPlay: true,
-      displayProgress: true,
-      displayWarp: true,
-    });
-
-    await synthControl.setTune(
-      instance.visualObj[0],
-      false,
-      getLocalPianoSynthOptions(),
-    );
-    instance.synthControl = synthControl;
-    instance.progressDragCleanup = setupProgressDrag(instance);
-    setupDurationControl(instance);
-    setupTempoControl(instance);
-  } catch (err) {
-    console.error("[ChatMusic] Synth init error:", err);
-    audioEl.innerHTML =
-      '<p class="chatmusic-no-audio">Failed to initialize audio playback.</p>';
-  }
-}
-
-function createCursorControl(instance: RenderInstance): object {
-  return {
-    onReady: () => setupKeyboard(instance),
-    onStart: () => clearPlaybackHighlight(instance),
-    onEvent: (event: TimingEvent) => highlightTimingEvent(instance, event),
-    onFinished: () => clearPlaybackHighlight(instance),
-  };
-}
 
 async function seekToAbcElement(
   instance: RenderInstance,
@@ -145,226 +67,6 @@ async function seekToAbcElement(
   } else {
     seek();
   }
-}
-
-function setupTempoControl(instance: RenderInstance): void {
-  const nativeTempoInput = instance.audioElement.querySelector(
-    ".abcjs-midi-tempo",
-  ) as HTMLInputElement | null;
-
-  if (!nativeTempoInput) return;
-
-  instance.tempoControl.connect(nativeTempoInput, instance.visualObj?.[0]);
-}
-
-function setupDurationControl(instance: RenderInstance): void {
-  instance.durationControl.mount(instance.audioElement);
-  instance.durationControl.setDuration(
-    getTuneDurationSeconds(instance.visualObj?.[0], getTimingEvents(instance)),
-  );
-}
-
-function setupProgressDrag(instance: RenderInstance): (() => void) | null {
-  const progressBar = instance.audioElement.querySelector<HTMLButtonElement>(
-    ".abcjs-midi-progress-background",
-  );
-  const playButton =
-    instance.audioElement.querySelector<HTMLButtonElement>(".abcjs-midi-start");
-  if (!progressBar) return null;
-
-  let isDragging = false;
-
-  const seekFromClientX = (clientX: number) => {
-    const percent = getProgressPercent(progressBar, clientX);
-    if (percent !== null) seekPlaybackToPercent(instance, percent);
-  };
-
-  const handlePointerDown = (event: PointerEvent) => {
-    if (event.button !== 0) return;
-
-    isDragging = true;
-    progressBar.classList.add("chatmusic-progress-dragging");
-    if (typeof event.pointerId === "number") {
-      progressBar.setPointerCapture?.(event.pointerId);
-    }
-    event.preventDefault();
-    seekFromClientX(event.clientX);
-  };
-
-  const handlePointerMove = (event: PointerEvent) => {
-    if (!isDragging) return;
-
-    event.preventDefault();
-    seekFromClientX(event.clientX);
-  };
-
-  const handlePointerUp = (event: PointerEvent) => {
-    if (!isDragging) return;
-
-    event.preventDefault();
-    seekFromClientX(event.clientX);
-    isDragging = false;
-    progressBar.classList.remove("chatmusic-progress-dragging");
-    if (typeof event.pointerId === "number") {
-      progressBar.releasePointerCapture?.(event.pointerId);
-    }
-  };
-
-  const handlePointerCancel = (event: PointerEvent) => {
-    if (!isDragging) return;
-
-    isDragging = false;
-    progressBar.classList.remove("chatmusic-progress-dragging");
-    if (typeof event.pointerId === "number") {
-      progressBar.releasePointerCapture?.(event.pointerId);
-    }
-  };
-
-  const handleClick = (event: MouseEvent) => {
-    if (event.detail === 0) return;
-
-    event.preventDefault();
-    event.stopImmediatePropagation();
-    seekFromClientX(event.clientX);
-  };
-
-  const handlePlayClick = (event: MouseEvent) => {
-    const hasPendingSeek =
-      instance.pendingPlaybackSeekPercent !== null ||
-      instance.pendingPlaybackSeekPromise !== null;
-    const synthControl = instance.synthControl as SeekableSynthControl | null;
-    if (!hasPendingSeek || !synthControl || synthControl.isLoaded === true) {
-      return;
-    }
-
-    event.preventDefault();
-    event.stopImmediatePropagation();
-    void playAfterPendingSeek(instance);
-  };
-
-  progressBar.addEventListener("pointerdown", handlePointerDown);
-  progressBar.addEventListener("pointermove", handlePointerMove);
-  progressBar.addEventListener("pointerup", handlePointerUp);
-  progressBar.addEventListener("pointercancel", handlePointerCancel);
-  progressBar.addEventListener("click", handleClick, true);
-  playButton?.addEventListener("click", handlePlayClick, true);
-
-  return () => {
-    progressBar.removeEventListener("pointerdown", handlePointerDown);
-    progressBar.removeEventListener("pointermove", handlePointerMove);
-    progressBar.removeEventListener("pointerup", handlePointerUp);
-    progressBar.removeEventListener("pointercancel", handlePointerCancel);
-    progressBar.removeEventListener("click", handleClick, true);
-    playButton?.removeEventListener("click", handlePlayClick, true);
-    progressBar.classList.remove("chatmusic-progress-dragging");
-  };
-}
-
-function getProgressPercent(
-  progressBar: HTMLElement,
-  clientX: number,
-): number | null {
-  const rect = progressBar.getBoundingClientRect();
-  const width = rect.width || progressBar.clientWidth;
-  if (!Number.isFinite(clientX) || width <= 0) return null;
-
-  return clampProgressPercent((clientX - rect.left) / width);
-}
-
-function clampProgressPercent(percent: number): number {
-  return Math.min(1, Math.max(0, percent));
-}
-
-function seekPlaybackToPercent(
-  instance: RenderInstance,
-  percent: number,
-): void {
-  const synthControl = instance.synthControl as SeekableSynthControl | null;
-  if (!synthControl) return;
-
-  const clampedPercent = clampProgressPercent(percent);
-  instance.pendingPlaybackSeekPercent = clampedPercent;
-  setPlaybackProgress(instance, clampedPercent);
-
-  if (synthControl.isLoaded === true) {
-    synthControl.seek?.(clampedPercent);
-    instance.pendingPlaybackSeekPercent = null;
-    return;
-  }
-
-  void flushPendingPlaybackSeek(instance);
-}
-
-async function playAfterPendingSeek(instance: RenderInstance): Promise<void> {
-  const synthControl = instance.synthControl as SeekableSynthControl | null;
-  if (!synthControl) return;
-
-  await flushPendingPlaybackSeek(instance);
-  await synthControl.play?.();
-}
-
-function flushPendingPlaybackSeek(instance: RenderInstance): Promise<unknown> {
-  if (instance.pendingPlaybackSeekPromise) {
-    return instance.pendingPlaybackSeekPromise;
-  }
-
-  const synthControl = instance.synthControl as SeekableSynthControl | null;
-  if (!synthControl || instance.pendingPlaybackSeekPercent === null) {
-    return Promise.resolve();
-  }
-
-  const applyPendingSeek = () => {
-    const pendingPercent = instance.pendingPlaybackSeekPercent;
-    if (pendingPercent !== null) {
-      setPlaybackProgress(instance, pendingPercent);
-      synthControl.seek?.(pendingPercent);
-      instance.pendingPlaybackSeekPercent = null;
-    }
-
-    return Promise.resolve({ status: "ok" });
-  };
-
-  const seekPromise = synthControl.runWhenReady
-    ? synthControl.runWhenReady(applyPendingSeek)
-    : applyPendingSeek();
-
-  instance.pendingPlaybackSeekPromise = Promise.resolve(seekPromise).finally(
-    () => {
-      instance.pendingPlaybackSeekPromise = null;
-    },
-  );
-
-  return instance.pendingPlaybackSeekPromise;
-}
-
-function setPlaybackProgress(instance: RenderInstance, percent: number): void {
-  const synthControl = instance.synthControl as SeekableSynthControl | null;
-  if (!synthControl) return;
-
-  const durationSeconds = getTuneDurationSeconds(
-    instance.visualObj?.[0],
-    getTimingEvents(instance),
-  );
-  if (synthControl.setProgress) {
-    synthControl.setProgress(
-      percent,
-      durationSeconds ? durationSeconds * 1000 : 0,
-    );
-  } else {
-    updateProgressThumb(instance.audioElement, percent);
-  }
-}
-
-function updateProgressThumb(audioElement: HTMLElement, percent: number): void {
-  const progressBar = audioElement.querySelector<HTMLElement>(
-    ".abcjs-midi-progress-background",
-  );
-  const progressThumb = audioElement.querySelector<HTMLElement>(
-    ".abcjs-midi-progress-indicator",
-  );
-  if (!progressBar || !progressThumb) return;
-
-  progressThumb.style.left = `${progressBar.clientWidth * percent}px`;
 }
 
 /**
@@ -475,7 +177,7 @@ export function renderAbc(
   applyKeyboardVisibility(instance, keyboardVisibility);
   setupKeyboard(instance);
   instances.set(preElement, instance);
-  setupScoreResizeObserver(instance);
+  setupScoreResizeObserver(instance, () => rerenderScoreForLayout(instance));
 
   // Initialize synth (async, non-blocking)
   initSynth(instance);
@@ -487,40 +189,6 @@ function playKeyboardPitch(pitch: number): void {
   playLocalPianoPitch(pitch).catch((err: unknown) => {
     console.warn("[ChatMusic] Keyboard pitch playback failed:", err);
   });
-}
-
-function exportScore(instance: RenderInstance): void {
-  const svg = getScoreSvg(instance.scoreElement);
-  if (!svg) return;
-
-  downloadSvg(svg, getSvgDownloadFilename(instance.abcText));
-}
-
-function exportMidi(instance: RenderInstance): void {
-  const tune = instance.visualObj?.[0];
-  if (!tune) return;
-
-  try {
-    downloadMidi(tune, getMidiDownloadFilename(instance.abcText));
-  } catch (error) {
-    console.warn("[ChatMusic] MIDI export failed:", error);
-  }
-}
-
-function copyQualityFeedback(instance: RenderInstance): void {
-  const report = validateAbcSource(instance.abcText);
-  const feedback = formatAbcQualityReportForAi(report);
-
-  navigator.clipboard.writeText(feedback).catch((error: unknown) => {
-    console.warn("[ChatMusic] Copy ABC feedback failed:", error);
-  });
-}
-
-function updateQualityPanel(instance: RenderInstance): void {
-  const report = validateAbcSource(instance.abcText);
-  instance.qualityElement.setDiagnostics(
-    report.status === "ok" ? [] : report.diagnostics,
-  );
 }
 
 function applyKeyboardVisibility(
@@ -606,58 +274,8 @@ function updateRender(
   return instance;
 }
 
-function renderScore(
-  scoreElement: HTMLElement,
-  abcText: string,
-  clickListener: (abcElement: AbcElementRef) => void,
-): { visualObj: abcjs.TuneObject[]; staffWidth: number } {
-  const staffWidth = getScoreStaffWidth(scoreElement);
-  const visualObj = abcjs.renderAbc(scoreElement, abcText, {
-    responsive: "resize",
-    add_classes: true,
-    staffwidth: staffWidth,
-    wrap: { ...SCORE_WRAP_OPTIONS },
-    clickListener,
-  });
-
-  return { visualObj, staffWidth };
-}
-
-function getScoreStaffWidth(scoreElement: HTMLElement): number {
-  const measuredWidth = Math.floor(
-    scoreElement.getBoundingClientRect().width || scoreElement.clientWidth,
-  );
-  const availableWidth = measuredWidth || DEFAULT_STAFF_WIDTH;
-
-  return Math.max(MIN_STAFF_WIDTH, availableWidth - SCORE_WIDTH_PADDING);
-}
-
-function setupScoreResizeObserver(instance: RenderInstance): void {
-  if (typeof ResizeObserver === "undefined") return;
-
-  instance.scoreResizeObserver = new ResizeObserver(() => {
-    if (instance.scoreResizeTimer !== undefined) {
-      window.clearTimeout(instance.scoreResizeTimer);
-    }
-
-    instance.scoreResizeTimer = window.setTimeout(() => {
-      instance.scoreResizeTimer = undefined;
-      rerenderScoreForLayout(instance);
-    }, SCORE_RESIZE_DEBOUNCE_MS);
-  });
-  instance.scoreResizeObserver.observe(instance.scoreElement);
-}
-
 function rerenderScoreForLayout(instance: RenderInstance): void {
-  if (!instance.container.isConnected) return;
-
-  const nextStaffWidth = getScoreStaffWidth(instance.scoreElement);
-  if (
-    Math.abs(nextStaffWidth - instance.renderedStaffWidth) <
-    STAFF_WIDTH_CHANGE_THRESHOLD
-  ) {
-    return;
-  }
+  if (!shouldRerenderScoreForLayout(instance)) return;
 
   clearPlaybackHighlight(instance);
   const scoreRender = renderScore(
@@ -676,15 +294,6 @@ function rerenderScoreForLayout(instance: RenderInstance): void {
     instance.synthControl = null;
     initSynth(instance);
   }
-}
-
-function disposeScoreResizeObserver(instance: RenderInstance): void {
-  if (instance.scoreResizeTimer !== undefined) {
-    window.clearTimeout(instance.scoreResizeTimer);
-    instance.scoreResizeTimer = undefined;
-  }
-  instance.scoreResizeObserver?.disconnect();
-  instance.scoreResizeObserver = null;
 }
 
 function applyTheme(instance: RenderInstance, themeMode: ThemeMode): void {

@@ -1,31 +1,17 @@
 import {
-  DEFAULT_THEME_MODE,
-  normalizeEditorWrap,
-  normalizeThemeMode,
   normalizeLayoutMode,
   type AbcAutoCheck,
   type EditorWrap,
   type KeyboardVisibility,
-  type ThemeMode,
   type LayoutMode,
 } from "../shared/settings";
-import type {
-  AbcDiagnostic,
-  AbcQualityReport,
-} from "../shared/abc-quality/diagnostics";
-import { validateAbcSource } from "../shared/abc-quality/validate";
 import { decodeStudioAbcHash } from "../shared/studio-url";
+import type { SourceHighlightRange } from "../player/renderer";
 import {
-  downloadAbcSource,
-  getAbcSourceDownloadFilename,
-  importAbcFile,
-} from "../shared/abc-file";
-import {
-  renderAbc,
-  removeRender,
-  type RenderInstance,
-  type SourceHighlightRange,
-} from "../player/renderer";
+  createSourceHighlightFragment,
+  normalizeSourceHighlightRanges,
+} from "./source-highlight";
+import { checkStudioAbcSource, hideQualityPanel } from "./quality-report";
 import {
   loadStudioSettings,
   saveStudioAbcAutoCheck,
@@ -33,16 +19,23 @@ import {
   saveStudioThemeMode,
   saveStudioLayoutMode,
 } from "./settings-store";
+import { createStudioSplitLayout } from "./split-layout";
+import {
+  copyStudioSourceToClipboard,
+  exportStudioAbcFile,
+  importStudioAbcFile,
+  updateStudioSourceStats,
+} from "./source-actions";
+import {
+  applyStudioEditorWrap,
+  applyStudioLayoutMode,
+  applyStudioTheme,
+  getSelectedStudioThemeMode,
+} from "./presentation";
+import { createStudioRenderController } from "./rendering";
 
 const STUDIO_SOURCE_STORAGE_KEY = "chatmusicStudioAbcText";
-const STUDIO_DESKTOP_SPLIT_STORAGE_KEY = "chatmusicStudioDesktopSplit";
-const STUDIO_MOBILE_SPLIT_STORAGE_KEY = "chatmusicStudioMobileSplit";
 const RENDER_DEBOUNCE_MS = 350;
-const MIN_DESKTOP_EDITOR_WIDTH = 280;
-const MIN_DESKTOP_PREVIEW_WIDTH = 320;
-const MIN_MOBILE_EDITOR_HEIGHT = 160;
-const MIN_MOBILE_PREVIEW_HEIGHT = 220;
-const SPLIT_KEYBOARD_STEP = 24;
 
 const EXAMPLE_ABC = `X: 1
 T: ChatMusic Studio Example
@@ -97,21 +90,38 @@ const clearButton = document.getElementById("clearButton") as HTMLButtonElement;
 const colorSchemeQuery = window.matchMedia("(prefers-color-scheme: dark)");
 const stackedLayoutQuery = window.matchMedia("(max-width: 860px)");
 
-let renderTimer: number | undefined;
-let currentInstance: RenderInstance | null = null;
 let currentKeyboardVisibility: KeyboardVisibility = "visible";
 let currentAbcAutoCheck: AbcAutoCheck = "enabled";
 let currentEditorWrap: EditorWrap = "disabled";
 let explicitLayoutMode: LayoutMode = "auto";
-let isResizing = false;
 let currentSourceHighlightKey = "";
+
+const splitLayout = createStudioSplitLayout({
+  editorPane,
+  resizer: studioResizer,
+  stackedLayoutQuery,
+  studioShell,
+  getLayoutMode: () => explicitLayoutMode,
+});
+const renderController = createStudioRenderController({
+  clearSourceHighlight,
+  getKeyboardVisibility: () => currentKeyboardVisibility,
+  getThemeMode: () => getSelectedStudioThemeMode(themeModeForm),
+  input,
+  renderDelayMs: RENDER_DEBOUNCE_MS,
+  renderMount,
+  renderStatus,
+  runAutoCheck,
+  sourceElement,
+  updateSourceHighlight,
+});
 
 void initializeStudio();
 
 async function initializeStudio(): Promise<void> {
-  restoreSplitSizes();
-  updateResizerOrientation();
-  window.requestAnimationFrame(clampRestoredSplitSize);
+  splitLayout.restoreSizes();
+  splitLayout.updateOrientation();
+  window.requestAnimationFrame(() => splitLayout.clampRestoredSize());
 
   input.value =
     readAbcFromUrlHash() ??
@@ -129,16 +139,16 @@ async function initializeStudio(): Promise<void> {
 
   autoCheckInput.checked = settings.abcAutoCheck === "enabled";
   applyEditorWrap(settings.editorWrap);
-  applyStudioTheme(settings.themeMode);
-  applyStudioLayoutMode(settings.layoutMode);
+  applyStudioTheme(settings.themeMode, colorSchemeQuery.matches);
+  applyStudioLayoutMode(studioShell, settings.layoutMode);
 
   input.addEventListener("input", () => {
     clearSourceHighlight();
     updateSourceStats();
     window.localStorage.setItem(STUDIO_SOURCE_STORAGE_KEY, input.value);
-    hideQualityPanel();
+    hideQualityPanel(qualityPanel);
     renderStatus.textContent = "Checking...";
-    scheduleRender();
+    renderController.scheduleRender();
   });
   input.addEventListener("scroll", syncSourceHighlightScroll);
 
@@ -166,31 +176,31 @@ async function initializeStudio(): Promise<void> {
   });
   loadExampleButton.addEventListener("click", () => {
     setInputValue(EXAMPLE_ABC);
-    renderCurrentInput();
+    renderController.renderCurrentInput();
   });
   clearButton.addEventListener("click", () => {
     setInputValue("");
-    renderCurrentInput();
+    renderController.renderCurrentInput();
     input.focus();
   });
   themeModeForm.addEventListener("change", async () => {
-    const themeMode = normalizeThemeMode(themeModeForm.themeMode.value);
-    applyStudioTheme(themeMode);
+    const themeMode = getSelectedStudioThemeMode(themeModeForm);
+    applyStudioTheme(themeMode, colorSchemeQuery.matches);
     await saveStudioThemeMode(themeMode);
-    renderCurrentInput();
+    renderController.renderCurrentInput();
   });
   layoutModeForm.addEventListener("change", async () => {
     const layoutMode = normalizeLayoutMode(layoutModeForm.layoutMode.value);
     explicitLayoutMode = layoutMode;
-    applyStudioLayoutMode(layoutMode);
-    updateResizerOrientation();
+    applyStudioLayoutMode(studioShell, layoutMode);
+    splitLayout.updateOrientation();
     await saveStudioLayoutMode(layoutMode);
-    window.requestAnimationFrame(clampRestoredSplitSize);
+    window.requestAnimationFrame(() => splitLayout.clampRestoredSize());
   });
   colorSchemeQuery.addEventListener("change", () => {
-    if (getSelectedThemeMode() === "auto") {
-      applyStudioTheme("auto");
-      renderCurrentInput();
+    if (getSelectedStudioThemeMode(themeModeForm) === "auto") {
+      applyStudioTheme("auto", colorSchemeQuery.matches);
+      renderController.renderCurrentInput();
     }
   });
 
@@ -222,17 +232,17 @@ async function initializeStudio(): Promise<void> {
 
   stackedLayoutQuery.addEventListener("change", () => {
     if (explicitLayoutMode === "auto") {
-      updateResizerOrientation();
-      window.requestAnimationFrame(clampRestoredSplitSize);
+      splitLayout.updateOrientation();
+      window.requestAnimationFrame(() => splitLayout.clampRestoredSize());
     }
   });
-  studioResizer.addEventListener("pointerdown", startResize);
-  studioResizer.addEventListener("keydown", handleResizerKeydown);
-  window.addEventListener("pointermove", resizeFromPointer);
-  window.addEventListener("pointerup", stopResize);
+  studioResizer.addEventListener("pointerdown", splitLayout.startResize);
+  studioResizer.addEventListener("keydown", splitLayout.handleKeydown);
+  window.addEventListener("pointermove", splitLayout.resizeFromPointer);
+  window.addEventListener("pointerup", splitLayout.stopResize);
 
   updateSourceStats();
-  renderCurrentInput();
+  renderController.renderCurrentInput();
 }
 
 async function updateAbcAutoCheckSetting(
@@ -250,124 +260,13 @@ async function updateEditorWrapSetting(editorWrap: EditorWrap): Promise<void> {
 }
 
 function applyEditorWrap(editorWrap: EditorWrap): void {
-  currentEditorWrap = normalizeEditorWrap(editorWrap);
+  currentEditorWrap = applyStudioEditorWrap(
+    editorFrame,
+    input,
+    editorWrap,
+    syncSourceHighlightScroll,
+  );
   editorWrapInput.checked = currentEditorWrap === "enabled";
-  editorFrame.dataset.editorWrap = currentEditorWrap;
-  input.wrap = currentEditorWrap === "enabled" ? "soft" : "off";
-  if (currentEditorWrap === "enabled") input.scrollLeft = 0;
-  syncSourceHighlightScroll();
-}
-
-function restoreSplitSizes(): void {
-  const desktopSplit = window.localStorage.getItem(
-    STUDIO_DESKTOP_SPLIT_STORAGE_KEY,
-  );
-  const mobileSplit = window.localStorage.getItem(
-    STUDIO_MOBILE_SPLIT_STORAGE_KEY,
-  );
-
-  if (desktopSplit) {
-    studioShell.style.setProperty("--studio-editor-size", desktopSplit);
-  }
-  if (mobileSplit) {
-    studioShell.style.setProperty("--studio-editor-mobile-size", mobileSplit);
-  }
-}
-
-function updateResizerOrientation(): void {
-  studioResizer.setAttribute(
-    "aria-orientation",
-    isStackedLayout() ? "horizontal" : "vertical",
-  );
-}
-
-function clampRestoredSplitSize(): void {
-  if (isStackedLayout()) {
-    setMobileEditorHeight(editorPane.getBoundingClientRect().height);
-  }
-}
-
-function startResize(event: PointerEvent): void {
-  isResizing = true;
-  studioShell.classList.add("is-resizing");
-  studioResizer.setPointerCapture(event.pointerId);
-}
-
-function resizeFromPointer(event: PointerEvent): void {
-  if (!isResizing) return;
-
-  if (isStackedLayout()) {
-    setMobileEditorHeight(
-      event.clientY - editorPane.getBoundingClientRect().top,
-    );
-  } else {
-    setDesktopEditorWidth(
-      event.clientX - studioShell.getBoundingClientRect().left,
-    );
-  }
-}
-
-function stopResize(): void {
-  if (!isResizing) return;
-  isResizing = false;
-  studioShell.classList.remove("is-resizing");
-}
-
-function handleResizerKeydown(event: KeyboardEvent): void {
-  const stackedLayout = isStackedLayout();
-  const delta = getResizeDelta(event, stackedLayout);
-  if (delta === 0) return;
-
-  event.preventDefault();
-  if (stackedLayout) {
-    setMobileEditorHeight(editorPane.getBoundingClientRect().height + delta);
-  } else {
-    setDesktopEditorWidth(editorPane.getBoundingClientRect().width + delta);
-  }
-}
-
-function getResizeDelta(event: KeyboardEvent, stackedLayout: boolean): number {
-  if (stackedLayout) {
-    if (event.key === "ArrowUp") return -SPLIT_KEYBOARD_STEP;
-    if (event.key === "ArrowDown") return SPLIT_KEYBOARD_STEP;
-    return 0;
-  }
-
-  if (event.key === "ArrowLeft") return -SPLIT_KEYBOARD_STEP;
-  if (event.key === "ArrowRight") return SPLIT_KEYBOARD_STEP;
-  return 0;
-}
-
-function setDesktopEditorWidth(width: number): void {
-  const maxWidth =
-    studioShell.getBoundingClientRect().width - MIN_DESKTOP_PREVIEW_WIDTH;
-  const editorWidth = clamp(width, MIN_DESKTOP_EDITOR_WIDTH, maxWidth);
-  const value = `${editorWidth}px`;
-
-  studioShell.style.setProperty("--studio-editor-size", value);
-  window.localStorage.setItem(STUDIO_DESKTOP_SPLIT_STORAGE_KEY, value);
-}
-
-function setMobileEditorHeight(height: number): void {
-  const maxHeight =
-    studioShell.getBoundingClientRect().height -
-    MIN_MOBILE_PREVIEW_HEIGHT -
-    studioResizer.getBoundingClientRect().height;
-  const editorHeight = clamp(height, MIN_MOBILE_EDITOR_HEIGHT, maxHeight);
-  const value = `${editorHeight}px`;
-
-  studioShell.style.setProperty("--studio-editor-mobile-size", value);
-  window.localStorage.setItem(STUDIO_MOBILE_SPLIT_STORAGE_KEY, value);
-}
-
-function isStackedLayout(): boolean {
-  if (explicitLayoutMode === "vertical") return true;
-  if (explicitLayoutMode === "horizontal") return false;
-  return stackedLayoutQuery.matches;
-}
-
-function clamp(value: number, min: number, max: number): number {
-  return Math.min(Math.max(value, min), Math.max(min, max));
 }
 
 function readAbcFromUrlHash(): string | null {
@@ -420,89 +319,20 @@ function syncSourceHighlightScroll(): void {
   sourceHighlightMirror.scrollLeft = input.scrollLeft;
 }
 
-function normalizeSourceHighlightRanges(
-  ranges: SourceHighlightRange[],
-  sourceLength: number,
-): SourceHighlightRange[] {
-  const boundedRanges = ranges
-    .map((range) => ({
-      start: clamp(range.start, 0, sourceLength),
-      end: clamp(range.end, 0, sourceLength),
-    }))
-    .filter((range) => range.end > range.start)
-    .sort(
-      (first, second) => first.start - second.start || first.end - second.end,
-    );
-  const mergedRanges: SourceHighlightRange[] = [];
-
-  for (const range of boundedRanges) {
-    const previousRange = mergedRanges[mergedRanges.length - 1];
-    if (previousRange && range.start <= previousRange.end) {
-      previousRange.end = Math.max(previousRange.end, range.end);
-    } else {
-      mergedRanges.push({ ...range });
-    }
-  }
-
-  return mergedRanges;
-}
-
-function createSourceHighlightFragment(
-  sourceText: string,
-  ranges: SourceHighlightRange[],
-): DocumentFragment {
-  const fragment = document.createDocumentFragment();
-  let position = 0;
-
-  for (const range of ranges) {
-    if (range.start > position) {
-      fragment.append(
-        document.createTextNode(sourceText.slice(position, range.start)),
-      );
-    }
-
-    const highlight = document.createElement("mark");
-    highlight.className = "abc-highlight-token";
-    highlight.textContent = sourceText.slice(range.start, range.end);
-    fragment.append(highlight);
-    position = range.end;
-  }
-
-  if (position < sourceText.length) {
-    fragment.append(document.createTextNode(sourceText.slice(position)));
-  }
-
-  return fragment;
-}
-
-function offsetSourceHighlightRanges(
-  ranges: SourceHighlightRange[],
-  offset: number,
-): SourceHighlightRange[] {
-  return ranges.map((range) => ({
-    start: range.start + offset,
-    end: range.end + offset,
-  }));
-}
-
 function updateSourceStats(): void {
-  const characterCount = input.value.length;
-  const lineCount =
-    input.value.length === 0 ? 0 : input.value.split("\n").length;
-  sourceStats.textContent = `${lineCount} lines, ${characterCount} chars`;
-  copySourceButton.disabled = characterCount === 0;
-  exportAbcButton.disabled = characterCount === 0;
+  updateStudioSourceStats(
+    { copySourceButton, exportAbcButton, sourceStats },
+    input.value,
+  );
 }
 
 function checkCurrentAbcSource(): void {
-  const report = validateAbcSource(input.value);
-  renderStatus.textContent = getQualityStatusText(report);
-
-  if (isAutoCheckEnabled() && report.status !== "ok") {
-    renderQualityReport(report);
-  } else {
-    hideQualityPanel();
-  }
+  checkStudioAbcSource(
+    input.value,
+    renderStatus,
+    qualityPanel,
+    isAutoCheckEnabled(),
+  );
 }
 
 function runAutoCheck(): void {
@@ -513,202 +343,25 @@ function isAutoCheckEnabled(): boolean {
   return currentAbcAutoCheck === "enabled";
 }
 
-function renderQualityReport(report: AbcQualityReport): void {
-  qualityPanel.hidden = false;
-  qualityPanel.dataset.status = report.status;
-  qualityPanel.replaceChildren(createQualitySummary(report));
-
-  if (report.diagnostics.length === 0) return;
-
-  const list = document.createElement("ul");
-  list.className = "quality-list";
-  for (const diagnostic of report.diagnostics) {
-    list.append(createDiagnosticItem(diagnostic));
-  }
-  qualityPanel.append(list);
-}
-
-function createQualitySummary(report: AbcQualityReport): HTMLElement {
-  const summary = document.createElement("p");
-  summary.className = "quality-summary";
-
-  if (report.status === "ok") {
-    summary.textContent = `No abcjs parser warnings (${report.tuneCount} tune${report.tuneCount === 1 ? "" : "s"}).`;
-  } else {
-    summary.textContent = `${report.diagnostics.length} issue${report.diagnostics.length === 1 ? "" : "s"} found.`;
-  }
-
-  return summary;
-}
-
-function createDiagnosticItem(diagnostic: AbcDiagnostic): HTMLElement {
-  const item = document.createElement("li");
-  item.className = "quality-item";
-
-  const title = document.createElement("span");
-  title.className = "quality-title";
-  title.textContent = `${diagnostic.severity.toUpperCase()}: ${diagnostic.title}`;
-
-  const message = document.createElement("span");
-  message.textContent = diagnostic.message;
-
-  item.append(title, message);
-
-  const location = formatDiagnosticLocation(diagnostic);
-  if (location) {
-    const locationElement = document.createElement("span");
-    locationElement.className = "quality-location";
-    locationElement.textContent = location;
-    item.append(locationElement);
-  }
-
-  return item;
-}
-
-function formatDiagnosticLocation(diagnostic: AbcDiagnostic): string | null {
-  if (diagnostic.line === undefined) return null;
-  if (diagnostic.column === undefined) return `Line ${diagnostic.line}`;
-  return `Line ${diagnostic.line}, column ${diagnostic.column}`;
-}
-
-function hideQualityPanel(): void {
-  qualityPanel.hidden = true;
-  qualityPanel.replaceChildren();
-}
-
-function getQualityStatusText(report: AbcQualityReport): string {
-  if (report.status === "ok") return "ABC check passed";
-  if (report.status === "warning") return "ABC warnings found";
-  return "ABC errors found";
-}
-
 async function copySourceToClipboard(): Promise<void> {
-  try {
-    await navigator.clipboard.writeText(input.value);
-    sourceStats.textContent = "Copied";
-  } catch (error) {
-    console.error("[ChatMusic Studio] Copy failed:", error);
-    sourceStats.textContent = "Copy failed";
-  }
-
-  window.setTimeout(updateSourceStats, 1200);
-}
-
-async function importSelectedAbcFile(): Promise<void> {
-  const file = abcFileInput.files?.[0];
-  if (!file) return;
-
-  renderStatus.textContent = "Opening ABC...";
-  importAbcButton.disabled = true;
-
-  try {
-    const abcText = await importAbcFile(file);
-    setInputValue(abcText);
-    renderCurrentInput();
-    setImportCompleteStatus("Opened ABC");
-  } catch (error) {
-    console.error("[ChatMusic Studio] ABC import failed:", error);
-    renderStatus.textContent = getAbcImportErrorMessage(error);
-  } finally {
-    importAbcButton.disabled = false;
-    abcFileInput.value = "";
-  }
-}
-
-function exportCurrentAbcFile(): void {
-  const abcText = input.value;
-  if (!abcText.trim()) return;
-
-  downloadAbcSource(abcText, getAbcSourceDownloadFilename(abcText));
-  sourceStats.textContent = "Saved ABC";
-  window.setTimeout(updateSourceStats, 1200);
-}
-
-function setImportCompleteStatus(message: string): void {
-  if (qualityPanel.hidden) renderStatus.textContent = message;
-}
-
-function getAbcImportErrorMessage(error: unknown): string {
-  if (error instanceof Error) return error.message;
-  return "ABC import failed";
-}
-
-function scheduleRender(): void {
-  if (renderTimer !== undefined) window.clearTimeout(renderTimer);
-  renderStatus.textContent = "Editing...";
-  renderTimer = window.setTimeout(renderCurrentInput, RENDER_DEBOUNCE_MS);
-}
-
-function renderCurrentInput(): void {
-  if (renderTimer !== undefined) {
-    window.clearTimeout(renderTimer);
-    renderTimer = undefined;
-  }
-
-  const abcText = input.value.trim();
-  const sourceOffset = abcText ? input.value.indexOf(abcText) : 0;
-  clearSourceHighlight();
-  sourceElement.textContent = abcText;
-
-  if (!abcText) {
-    removeRender(sourceElement);
-    currentInstance = null;
-    renderMount.classList.remove("has-render");
-    renderStatus.textContent = "Ready";
-    return;
-  }
-
-  try {
-    currentInstance = renderAbc(
-      sourceElement,
-      abcText,
-      getSelectedThemeMode(),
-      "collapsed",
-      currentKeyboardVisibility,
-      {
-        onSourceHighlight: (ranges) => {
-          updateSourceHighlight(
-            offsetSourceHighlightRanges(ranges, sourceOffset),
-          );
-        },
-      },
-    );
-    currentInstance.container.dataset.chatmusicLayout = "studio";
-    renderMount.classList.add("has-render");
-    renderStatus.textContent = "Rendered";
-    runAutoCheck();
-  } catch (error) {
-    console.error("[ChatMusic Studio] Render failed:", error);
-    renderStatus.textContent = "Render failed";
-  }
-}
-
-function getSelectedThemeMode(): ThemeMode {
-  return normalizeThemeMode(
-    themeModeForm.themeMode.value || DEFAULT_THEME_MODE,
+  await copyStudioSourceToClipboard(
+    input.value,
+    sourceStats,
+    updateSourceStats,
   );
 }
 
-function applyStudioTheme(themeMode: ThemeMode): void {
-  const resolvedTheme =
-    themeMode === "auto"
-      ? colorSchemeQuery.matches
-        ? "dark"
-        : "light"
-      : themeMode;
-
-  document.documentElement.dataset.theme = resolvedTheme;
-  document.documentElement.dataset.themeMode = themeMode;
+async function importSelectedAbcFile(): Promise<void> {
+  await importStudioAbcFile({
+    abcFileInput,
+    importAbcButton,
+    qualityPanel,
+    renderCurrentInput: renderController.renderCurrentInput,
+    renderStatus,
+    setInputValue,
+  });
 }
 
-function applyStudioLayoutMode(layoutMode: LayoutMode): void {
-  if (layoutMode === "horizontal") {
-    studioShell.classList.add("layout-split");
-    studioShell.classList.remove("layout-stacked");
-  } else if (layoutMode === "vertical") {
-    studioShell.classList.add("layout-stacked");
-    studioShell.classList.remove("layout-split");
-  } else {
-    studioShell.classList.remove("layout-split", "layout-stacked");
-  }
+function exportCurrentAbcFile(): void {
+  exportStudioAbcFile(input.value, sourceStats, updateSourceStats);
 }
