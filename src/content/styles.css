@@ -154,6 +154,15 @@ chatmusic-code-toggle {
   align-items: center;
 }
 
+chatmusic-fullscreen-toggle {
+  display: inline-flex;
+  align-items: center;
+}
+
+chatmusic-fullscreen-toggle[hidden] {
+  display: none;
+}
+
 .chatmusic-tempo-menu {
   position: relative;
   display: flex;

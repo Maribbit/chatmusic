@@ -1,6 +1,8 @@
 import { html, render, svg, type TemplateResult } from "lit";
 import type { ThemeMode } from "../shared/settings";
 import { CODE_TOGGLE_EVENT } from "./code-toggle";
+import type { ChatMusicFullscreenToggleElement } from "./fullscreen-toggle";
+import "./fullscreen-toggle";
 import { QUALITY_COPY_EVENT } from "./quality-panel";
 import { resolveTheme } from "./theme";
 
@@ -42,15 +44,12 @@ export function createRenderView(
   container.className = "chatmusic-container";
   render(renderContainerTemplate(), container);
 
-  const fullscreenButton = container.querySelector(
-    ".chatmusic-fullscreen-button",
-  ) as HTMLButtonElement;
-  const cleanupFullscreenButton = setupFullscreenButton(host, fullscreenButton);
+  const fullscreenToggle = container.querySelector(
+    "chatmusic-fullscreen-toggle",
+  ) as ChatMusicFullscreenToggleElement;
+  fullscreenToggle.setFullscreenTarget(host);
   const cleanupActions = setupRenderViewActions(container, handlers);
-  const cleanup = () => {
-    cleanupActions();
-    cleanupFullscreenButton();
-  };
+  const cleanup = () => cleanupActions();
 
   shadowRoot.append(style, container);
   preElement.parentNode?.insertBefore(host, preElement.nextSibling);
@@ -116,15 +115,7 @@ function renderContainerTemplate(): TemplateResult {
         >
           ${renderExternalLinkIcon()}
         </button>
-        <button
-          class="chatmusic-fullscreen-button"
-          type="button"
-          title="Enter fullscreen"
-          aria-label="Enter fullscreen"
-          aria-pressed="false"
-        >
-          ${renderFullscreenIcon()}
-        </button>
+        <chatmusic-fullscreen-toggle></chatmusic-fullscreen-toggle>
         <button
           class="chatmusic-keyboard-toggle-button"
           type="button"
@@ -187,15 +178,6 @@ function renderExternalLinkIcon(): TemplateResult {
     <path d="M15 3h6v6" />
     <path d="M10 14 21 3" />
     <path d="M21 14v5a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5" />
-  `);
-}
-
-function renderFullscreenIcon(): TemplateResult {
-  return renderIcon(svg`
-    <path d="M8 3H5a2 2 0 0 0-2 2v3" />
-    <path d="M21 8V5a2 2 0 0 0-2-2h-3" />
-    <path d="M3 16v3a2 2 0 0 0 2 2h3" />
-    <path d="M16 21h3a2 2 0 0 0 2-2v-3" />
   `);
 }
 
@@ -270,42 +252,3 @@ function setupButtonAction(
   return () => button.removeEventListener("click", handler);
 }
 
-function setupFullscreenButton(
-  host: HTMLElement,
-  button: HTMLButtonElement,
-): () => void {
-  if (!document.fullscreenEnabled || !host.requestFullscreen) {
-    button.hidden = true;
-    return () => {};
-  }
-
-  const updateButtonState = () => {
-    const isFullscreen = document.fullscreenElement === host;
-    const label = isFullscreen ? "Exit fullscreen" : "Enter fullscreen";
-
-    button.title = label;
-    button.setAttribute("aria-label", label);
-    button.setAttribute("aria-pressed", String(isFullscreen));
-  };
-
-  const toggleFullscreen = async () => {
-    try {
-      if (document.fullscreenElement === host) {
-        await document.exitFullscreen();
-      } else {
-        await host.requestFullscreen();
-      }
-    } catch (err) {
-      console.warn("[ChatMusic] Fullscreen toggle failed:", err);
-    }
-  };
-
-  button.addEventListener("click", toggleFullscreen);
-  document.addEventListener("fullscreenchange", updateButtonState);
-  updateButtonState();
-
-  return () => {
-    button.removeEventListener("click", toggleFullscreen);
-    document.removeEventListener("fullscreenchange", updateButtonState);
-  };
-}
