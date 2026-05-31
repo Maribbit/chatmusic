@@ -13,9 +13,7 @@ import {
   type KeyboardVisibility,
   type ThemeMode,
 } from "../shared/settings";
-import type {
-  AbcDiagnostic,
-} from "../shared/abc-quality/diagnostics";
+import type { AbcDiagnostic } from "../shared/abc-quality/diagnostics";
 import {
   formatAbcQualityReportForAi,
   validateAbcSource,
@@ -26,23 +24,18 @@ import {
   downloadMidi,
   getMidiDownloadFilename,
 } from "../shared/abc-midi-export";
-import { createDurationControl, type DurationControl } from "./duration-control";
+import {
+  createDurationControl,
+  type DurationControl,
+} from "./duration-control";
 import { getTuneDurationSeconds } from "./duration";
 import {
   createKeyboardController,
   type KeyboardController,
   type MidiPitch,
 } from "./keyboard";
-import {
-  downloadSvg,
-  getScoreSvg,
-  getSvgDownloadFilename,
-} from "./svg-export";
-import {
-  getLocalPianoSynthOptions,
-  playLocalPianoPitch,
-  warmLocalPianoSoundfont,
-} from "./soundfont";
+import { downloadSvg, getScoreSvg, getSvgDownloadFilename } from "./svg-export";
+import { getLocalPianoSynthOptions, playLocalPianoPitch } from "./soundfont";
 import { createTempoControl, type TempoControl } from "./tempo-control";
 import { applyRenderViewTheme, createRenderView } from "./view";
 
@@ -96,9 +89,7 @@ type TimedTuneObject = Omit<abcjs.TuneObject, "setTiming"> & {
 
 interface SeekableSynthControl extends abcjs.SynthObjectController {
   seek?: (percent: number) => void;
-  runWhenReady?: (
-    fn: () => Promise<{ status: string }>
-  ) => Promise<unknown>;
+  runWhenReady?: (fn: () => Promise<{ status: string }>) => Promise<unknown>;
 }
 
 const instances = new Map<Element, RenderInstance>();
@@ -116,7 +107,8 @@ async function initSynth(instance: RenderInstance): Promise<void> {
   instance.durationControl.reset();
 
   if (!abcjs.synth.supportsAudio()) {
-    audioEl.innerHTML = '<p class="chatmusic-no-audio">Audio playback not supported in this browser.</p>';
+    audioEl.innerHTML =
+      '<p class="chatmusic-no-audio">Audio playback not supported in this browser.</p>';
     return;
   }
 
@@ -132,15 +124,15 @@ async function initSynth(instance: RenderInstance): Promise<void> {
     await synthControl.setTune(
       instance.visualObj[0],
       false,
-      getLocalPianoSynthOptions()
+      getLocalPianoSynthOptions(),
     );
     setupDurationControl(instance);
     setupTempoControl(instance);
-    schedulePianoSoundfontWarmup();
     instance.synthControl = synthControl;
   } catch (err) {
     console.error("[ChatMusic] Synth init error:", err);
-    audioEl.innerHTML = '<p class="chatmusic-no-audio">Failed to initialize audio playback.</p>';
+    audioEl.innerHTML =
+      '<p class="chatmusic-no-audio">Failed to initialize audio playback.</p>';
   }
 }
 
@@ -155,7 +147,7 @@ function createCursorControl(instance: RenderInstance): object {
 
 function highlightTimingEvent(
   instance: RenderInstance,
-  event: TimingEvent
+  event: TimingEvent,
 ): void {
   instance.tempoControl.update(event);
   clearPlaybackHighlight(instance);
@@ -183,7 +175,7 @@ function setupKeyboard(instance: RenderInstance): void {
 
 function highlightKeyboardPitches(
   instance: RenderInstance,
-  midiPitches: MidiPitch[]
+  midiPitches: MidiPitch[],
 ): void {
   instance.keyboard.highlightPitches(midiPitches);
 }
@@ -217,7 +209,7 @@ function flattenTimingElements(elements: unknown[] | undefined): Element[] {
 
 async function seekToAbcElement(
   instance: RenderInstance,
-  abcElement: AbcElementRef
+  abcElement: AbcElementRef,
 ): Promise<void> {
   const percent = getSeekPercentForElement(instance, abcElement);
   if (percent === null || !instance.synthControl) return;
@@ -237,7 +229,7 @@ async function seekToAbcElement(
 
 function getSeekPercentForElement(
   instance: RenderInstance,
-  abcElement: AbcElementRef
+  abcElement: AbcElementRef,
 ): number | null {
   if (abcElement.startChar === undefined || abcElement.endChar === undefined) {
     return null;
@@ -248,7 +240,7 @@ function getSeekPercentForElement(
   if (!lastEvent || lastEvent.milliseconds <= 0) return null;
 
   const matchingEvent = timingEvents.find((event) =>
-    timingEventMatchesElement(event, abcElement)
+    timingEventMatchesElement(event, abcElement),
   );
   if (!matchingEvent) return null;
 
@@ -268,7 +260,7 @@ function getTimingEvents(instance: RenderInstance): TimingEvent[] {
 
 function timingEventMatchesElement(
   event: TimingEvent,
-  abcElement: AbcElementRef
+  abcElement: AbcElementRef,
 ): boolean {
   if (event.type && event.type !== "event") return false;
 
@@ -290,7 +282,7 @@ function timingEventMatchesElement(
 
 function setupTempoControl(instance: RenderInstance): void {
   const nativeTempoInput = instance.audioElement.querySelector(
-    ".abcjs-midi-tempo"
+    ".abcjs-midi-tempo",
   ) as HTMLInputElement | null;
 
   if (!nativeTempoInput) return;
@@ -301,7 +293,7 @@ function setupTempoControl(instance: RenderInstance): void {
 function setupDurationControl(instance: RenderInstance): void {
   instance.durationControl.mount(instance.audioElement);
   instance.durationControl.setDuration(
-    getTuneDurationSeconds(instance.visualObj?.[0], getTimingEvents(instance))
+    getTuneDurationSeconds(instance.visualObj?.[0], getTimingEvents(instance)),
   );
 }
 
@@ -314,7 +306,7 @@ export function renderAbc(
   abcText: string,
   themeMode: ThemeMode = DEFAULT_THEME_MODE,
   codeBlockVisibility: CodeBlockVisibility = DEFAULT_CODE_BLOCK_VISIBILITY,
-  keyboardVisibility: KeyboardVisibility = DEFAULT_KEYBOARD_VISIBILITY
+  keyboardVisibility: KeyboardVisibility = DEFAULT_KEYBOARD_VISIBILITY,
 ): RenderInstance {
   // If already rendered, update instead of creating new
   const existing = instances.get(preElement);
@@ -330,14 +322,14 @@ export function renderAbc(
     elements.keyboardElement,
     elements.keyboardToggleButton,
     keyboardVisibility === "visible",
-    playKeyboardPitch
+    playKeyboardPitch,
   );
   const durationControl = createDurationControl();
   const tempoControl = createTempoControl(
     elements.tempoMenuElement,
     elements.tempoInputElement,
     elements.tempoBpmElement,
-    (warpPercent) => durationControl.setWarp(warpPercent)
+    (warpPercent) => durationControl.setWarp(warpPercent),
   );
 
   // Render sheet music SVG
@@ -400,20 +392,6 @@ function playKeyboardPitch(pitch: number): void {
   playLocalPianoPitch(pitch).catch((err: unknown) => {
     console.warn("[ChatMusic] Keyboard pitch playback failed:", err);
   });
-}
-
-function schedulePianoSoundfontWarmup(): void {
-  const warmup = () => {
-    warmLocalPianoSoundfont().catch((err: unknown) => {
-      console.warn("[ChatMusic] Piano soundfont warmup failed:", err);
-    });
-  };
-
-  if ("requestIdleCallback" in window) {
-    window.requestIdleCallback(warmup, { timeout: 1500 });
-  } else {
-    setTimeout(warmup, 0);
-  }
 }
 
 function setupStudioButton(instance: RenderInstance): void {
@@ -502,7 +480,7 @@ function updateQualityPanel(instance: RenderInstance): void {
   instance.qualityPanelElement.hidden = false;
   instance.qualitySummaryElement.textContent = `${report.diagnostics.length} ABC parser issue${report.diagnostics.length === 1 ? "" : "s"} found.`;
   instance.qualityListElement.replaceChildren(
-    ...report.diagnostics.map(createQualityDiagnosticItem)
+    ...report.diagnostics.map(createQualityDiagnosticItem),
   );
 }
 
@@ -551,13 +529,13 @@ function setupCodeToggleButton(instance: RenderInstance): void {
 
 function applyKeyboardVisibility(
   instance: RenderInstance,
-  keyboardVisibility: KeyboardVisibility
+  keyboardVisibility: KeyboardVisibility,
 ): void {
   instance.keyboard.setVisible(keyboardVisibility === "visible");
 }
 
 export function updateKeyboardVisibility(
-  keyboardVisibility: KeyboardVisibility
+  keyboardVisibility: KeyboardVisibility,
 ): void {
   for (const instance of instances.values()) {
     applyKeyboardVisibility(instance, keyboardVisibility);
@@ -566,14 +544,14 @@ export function updateKeyboardVisibility(
 
 function applyCodeBlockVisibility(
   instance: RenderInstance,
-  codeBlockVisibility: CodeBlockVisibility
+  codeBlockVisibility: CodeBlockVisibility,
 ): void {
   setCodeCollapsed(instance, codeBlockVisibility === "collapsed");
 }
 
 function setCodeCollapsed(
   instance: RenderInstance,
-  isCollapsed: boolean
+  isCollapsed: boolean,
 ): void {
   if (!(instance.preElement instanceof HTMLElement)) return;
 
@@ -597,12 +575,12 @@ function updateCodeToggleButton(instance: RenderInstance): void {
   instance.codeToggleButton.setAttribute("aria-label", label);
   instance.codeToggleButton.setAttribute(
     "aria-pressed",
-    String(!instance.isCodeCollapsed)
+    String(!instance.isCodeCollapsed),
   );
 }
 
 export function updateCodeBlockVisibility(
-  codeBlockVisibility: CodeBlockVisibility
+  codeBlockVisibility: CodeBlockVisibility,
 ): void {
   for (const instance of instances.values()) {
     applyCodeBlockVisibility(instance, codeBlockVisibility);
@@ -615,7 +593,7 @@ export function updateCodeBlockVisibility(
 function updateRender(
   instance: RenderInstance,
   abcText: string,
-  themeMode: ThemeMode
+  themeMode: ThemeMode,
 ): RenderInstance {
   applyTheme(instance, themeMode);
   clearPlaybackHighlight(instance);
@@ -676,7 +654,7 @@ export function removeDisconnectedRenders(): void {
 function disposeRender(
   preElement: Element,
   instance: RenderInstance,
-  restoreCodeDisplay: boolean
+  restoreCodeDisplay: boolean,
 ): void {
   if (instance.synthControl) {
     instance.synthControl.pause();

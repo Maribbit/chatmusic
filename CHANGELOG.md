@@ -4,6 +4,13 @@ All notable changes to ChatMusic are documented in this file.
 
 This project follows a lightweight [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) style. Extension releases use the same numeric version in `package.json` and `manifest.json`.
 
+## [Unreleased]
+
+### Fixed
+
+- Studio ABC source editor now fills the available pane height when the quality panel is hidden.
+- Playback no longer starts an automatic full-piano soundfont warmup that could leave abcjs note caches in a failed state after transient sample-load errors.
+
 ## [0.3.0] - 2026-05-26
 
 ### Added
