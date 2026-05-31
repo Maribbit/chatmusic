@@ -1,8 +1,5 @@
 import { LitElement, html, type TemplateResult } from "lit";
-import {
-  formatDuration,
-  getEffectiveDurationSeconds,
-} from "./duration";
+import { formatDuration, getEffectiveDurationSeconds } from "./duration";
 
 export interface DurationControl {
   mount(audioElement: HTMLElement): void;
@@ -26,7 +23,7 @@ export function createDurationControl(): DurationControl {
     mount: (audioElement) => {
       element?.remove();
       element = document.createElement(
-        DURATION_TAG_NAME
+        DURATION_TAG_NAME,
       ) as ChatMusicDurationElement;
       element.className = "chatmusic-total-duration";
       element.setAttribute("aria-label", "Total duration");
@@ -72,7 +69,7 @@ export class ChatMusicDurationElement extends LitElement {
 
   setPlaybackDuration(
     durationSeconds: number | null,
-    warpPercent: number | null
+    warpPercent: number | null,
   ): void {
     this.baseDurationSeconds = durationSeconds;
     this.currentWarpPercent = warpPercent;
@@ -88,7 +85,7 @@ export class ChatMusicDurationElement extends LitElement {
   private getDurationSeconds(): number | null {
     return getEffectiveDurationSeconds(
       this.baseDurationSeconds,
-      this.currentWarpPercent
+      this.currentWarpPercent,
     );
   }
 }

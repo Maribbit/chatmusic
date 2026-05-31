@@ -12,9 +12,7 @@ export interface RenderViewElements {
   qualityPanelElement: HTMLElement;
   qualitySummaryElement: HTMLElement;
   qualityListElement: HTMLElement;
-  tempoMenuElement: HTMLElement;
-  tempoInputElement: HTMLInputElement;
-  tempoBpmElement: HTMLElement;
+  tempoElement: HTMLElement;
   codeToggleButton: HTMLButtonElement;
   cleanup: () => void;
 }
@@ -77,15 +75,7 @@ export function createRenderView(
     qualityListElement: container.querySelector(
       ".chatmusic-quality-list",
     ) as HTMLElement,
-    tempoMenuElement: container.querySelector(
-      ".chatmusic-tempo-menu",
-    ) as HTMLElement,
-    tempoInputElement: container.querySelector(
-      ".chatmusic-tempo-input",
-    ) as HTMLInputElement,
-    tempoBpmElement: container.querySelector(
-      ".chatmusic-tempo-bpm-value",
-    ) as HTMLElement,
+    tempoElement: container.querySelector("chatmusic-tempo") as HTMLElement,
     codeToggleButton: container.querySelector(
       ".chatmusic-code-toggle-button",
     ) as HTMLButtonElement,
@@ -144,32 +134,7 @@ function renderContainerTemplate(): TemplateResult {
     <div class="chatmusic-header">
       <span class="chatmusic-label">ChatMusic</span>
       <div class="chatmusic-header-actions">
-        <details class="chatmusic-tempo-menu" hidden>
-          <summary
-            class="chatmusic-tempo-button"
-            title="Tempo"
-            aria-label="Tempo"
-          >
-            ${renderTempoIcon()}
-          </summary>
-          <div class="chatmusic-tempo-panel">
-            <div class="chatmusic-tempo-readout" aria-live="polite">
-              <span class="chatmusic-tempo-bpm-value">--</span>
-              <span class="chatmusic-tempo-unit">BPM</span>
-            </div>
-            <label class="chatmusic-tempo-field">
-              <input
-                class="chatmusic-tempo-input"
-                type="number"
-                min="1"
-                max="300"
-                value="100"
-                aria-label="Playback speed"
-              />
-              <span>%</span>
-            </label>
-          </div>
-        </details>
+        <chatmusic-tempo hidden></chatmusic-tempo>
         <button
           class="chatmusic-export-button"
           type="button"
@@ -253,16 +218,6 @@ function renderIcon(paths: TemplateResult): TemplateResult {
       ${paths}
     </svg>
   `;
-}
-
-function renderTempoIcon(): TemplateResult {
-  return renderIcon(svg`
-    <path d="M7 21L9.6 4.2A2 2 0 0 1 11.5 2h1A2 2 0 0 1 14.4 4.2L17 21" />
-    <path d="M5 21h14" />
-    <path d="M9 13v-1 M15 13v-1" />
-    <path d="M12 21V8" />
-    <circle cx="12" cy="13.5" r="1.5" fill="currentColor" stroke="none" />
-  `);
 }
 
 function renderCameraIcon(): TemplateResult {

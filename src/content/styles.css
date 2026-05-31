@@ -140,6 +140,15 @@
   gap: 4px;
 }
 
+chatmusic-tempo {
+  display: inline-flex;
+  align-items: center;
+}
+
+chatmusic-tempo[hidden] {
+  display: none;
+}
+
 .chatmusic-tempo-menu {
   position: relative;
   display: flex;

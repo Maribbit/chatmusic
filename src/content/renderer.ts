@@ -350,9 +350,7 @@ export function renderAbc(
   );
   const durationControl = createDurationControl();
   const tempoControl = createTempoControl(
-    elements.tempoMenuElement,
-    elements.tempoInputElement,
-    elements.tempoBpmElement,
+    elements.tempoElement,
     (warpPercent) => durationControl.setWarp(warpPercent),
   );
 
