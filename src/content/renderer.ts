@@ -63,7 +63,17 @@ export interface RenderInstance {
   pendingPlaybackSeekPercent: number | null;
   pendingPlaybackSeekPromise: Promise<unknown> | null;
   progressDragCleanup: (() => void) | null;
+  onSourceHighlight: ((ranges: SourceHighlightRange[]) => void) | undefined;
   cleanup: () => void;
+}
+
+export interface SourceHighlightRange {
+  start: number;
+  end: number;
+}
+
+export interface RenderAbcOptions {
+  onSourceHighlight?: (ranges: SourceHighlightRange[]) => void;
 }
 
 interface AbcElementRef {
@@ -169,7 +179,7 @@ function highlightTimingEvent(
   event: TimingEvent,
 ): void {
   instance.tempoControl.update(event);
-  clearPlaybackHighlight(instance);
+  clearPlaybackHighlight(instance, false);
 
   const elements = flattenTimingElements(event.elements);
   for (const element of elements) {
@@ -178,14 +188,21 @@ function highlightTimingEvent(
 
   instance.activePlaybackElements = elements;
   highlightKeyboardPitches(instance, event.midiPitches ?? []);
+  instance.onSourceHighlight?.(
+    getTimingEventSourceRanges(event, instance.abcText.length),
+  );
 }
 
-function clearPlaybackHighlight(instance: RenderInstance): void {
+function clearPlaybackHighlight(
+  instance: RenderInstance,
+  clearSourceHighlight = true,
+): void {
   for (const element of instance.activePlaybackElements) {
     element.classList.remove("chatmusic-note-playing");
   }
   instance.keyboard.clearActiveKeys();
   instance.activePlaybackElements = [];
+  if (clearSourceHighlight) instance.onSourceHighlight?.([]);
 }
 
 function setupKeyboard(instance: RenderInstance): void {
@@ -224,6 +241,42 @@ function flattenTimingElements(elements: unknown[] | undefined): Element[] {
   }
 
   return flattened;
+}
+
+function getTimingEventSourceRanges(
+  event: TimingEvent,
+  sourceLength: number,
+): SourceHighlightRange[] {
+  const starts = event.startCharArray ?? [event.startChar ?? null];
+  const ends = event.endCharArray ?? [event.endChar ?? null];
+  const ranges: SourceHighlightRange[] = [];
+
+  for (let index = 0; index < Math.max(starts.length, ends.length); index++) {
+    const start = starts[index];
+    const end = ends[index];
+    if (typeof start !== "number" || typeof end !== "number") continue;
+    if (!Number.isFinite(start) || !Number.isFinite(end)) continue;
+
+    const boundedStart = Math.max(0, Math.min(sourceLength, start));
+    const boundedEnd = Math.max(0, Math.min(sourceLength, end));
+    if (boundedEnd <= boundedStart) continue;
+    ranges.push({ start: boundedStart, end: boundedEnd });
+  }
+
+  return ranges.filter(
+    (range, index) =>
+      ranges.findIndex(
+        (candidate) =>
+          candidate.start === range.start && candidate.end === range.end,
+      ) === index,
+  );
+}
+
+export function getSourceHighlightRangesForTest(
+  event: TimingEvent,
+  sourceLength: number,
+): SourceHighlightRange[] {
+  return getTimingEventSourceRanges(event, sourceLength);
 }
 
 async function seekToAbcElement(
@@ -529,10 +582,12 @@ export function renderAbc(
   themeMode: ThemeMode = DEFAULT_THEME_MODE,
   codeBlockVisibility: CodeBlockVisibility = DEFAULT_CODE_BLOCK_VISIBILITY,
   keyboardVisibility: KeyboardVisibility = DEFAULT_KEYBOARD_VISIBILITY,
+  options: RenderAbcOptions = {},
 ): RenderInstance {
   // If already rendered, update instead of creating new
   const existing = instances.get(preElement);
   if (existing) {
+    existing.onSourceHighlight = options.onSourceHighlight;
     applyTheme(existing, themeMode);
     applyKeyboardVisibility(existing, keyboardVisibility);
     if (existing.abcText === abcText) return existing;
@@ -608,6 +663,7 @@ export function renderAbc(
     pendingPlaybackSeekPercent: null,
     pendingPlaybackSeekPromise: null,
     progressDragCleanup: null,
+    onSourceHighlight: options.onSourceHighlight,
     cleanup: () => {
       if (instance) {
         disposeScoreResizeObserver(instance);

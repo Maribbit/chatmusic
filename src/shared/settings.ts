@@ -8,6 +8,8 @@ export const DEFAULT_ABC_AUTO_CHECK = "enabled";
 export const ABC_AUTO_CHECK_STORAGE_KEY = "abcAutoCheck";
 export const DEFAULT_LAYOUT_MODE = "auto";
 export const LAYOUT_MODE_STORAGE_KEY = "layoutMode";
+export const DEFAULT_EDITOR_WRAP = "disabled";
+export const EDITOR_WRAP_STORAGE_KEY = "editorWrap";
 
 export type ThemeMode = "auto" | "light" | "dark";
 export type ResolvedTheme = Exclude<ThemeMode, "auto">;
@@ -16,6 +18,7 @@ export type ResolvedLayout = Exclude<LayoutMode, "auto">;
 export type CodeBlockVisibility = "expanded" | "collapsed";
 export type KeyboardVisibility = "visible" | "hidden";
 export type AbcAutoCheck = "enabled" | "disabled";
+export type EditorWrap = "enabled" | "disabled";
 
 export function isThemeMode(value: unknown): value is ThemeMode {
   return value === "auto" || value === "light" || value === "dark";
@@ -63,4 +66,12 @@ export function isAbcAutoCheck(value: unknown): value is AbcAutoCheck {
 
 export function normalizeAbcAutoCheck(value: unknown): AbcAutoCheck {
   return isAbcAutoCheck(value) ? value : DEFAULT_ABC_AUTO_CHECK;
+}
+
+export function isEditorWrap(value: unknown): value is EditorWrap {
+  return value === "enabled" || value === "disabled";
+}
+
+export function normalizeEditorWrap(value: unknown): EditorWrap {
+  return isEditorWrap(value) ? value : DEFAULT_EDITOR_WRAP;
 }

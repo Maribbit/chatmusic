@@ -1,8 +1,10 @@
 import {
   DEFAULT_THEME_MODE,
+  normalizeEditorWrap,
   normalizeThemeMode,
   normalizeLayoutMode,
   type AbcAutoCheck,
+  type EditorWrap,
   type KeyboardVisibility,
   type ThemeMode,
   type LayoutMode,
@@ -22,10 +24,12 @@ import {
   renderAbc,
   removeRender,
   type RenderInstance,
+  type SourceHighlightRange,
 } from "../content/renderer";
 import {
   loadStudioSettings,
   saveStudioAbcAutoCheck,
+  saveStudioEditorWrap,
   saveStudioThemeMode,
   saveStudioLayoutMode,
 } from "./settings-store";
@@ -50,6 +54,10 @@ C D E F | G A B c | c B A G | F E D C |
 E2 D2 | C4 |]`;
 
 const input = document.getElementById("abcInput") as HTMLTextAreaElement;
+const editorFrame = document.getElementById("abcEditorFrame") as HTMLElement;
+const sourceHighlightMirror = document.getElementById(
+  "abcHighlightMirror",
+) as HTMLElement;
 const studioShell = document.querySelector(".studio-shell") as HTMLElement;
 const sourceElement = document.getElementById("studioSource") as HTMLElement;
 const renderMount = document.getElementById("renderMount") as HTMLElement;
@@ -66,6 +74,9 @@ const layoutModeForm = document.getElementById(
 ) as HTMLFormElement;
 const autoCheckInput = document.getElementById(
   "autoCheckInput",
+) as HTMLInputElement;
+const editorWrapInput = document.getElementById(
+  "editorWrapInput",
 ) as HTMLInputElement;
 const copySourceButton = document.getElementById(
   "copySourceButton",
@@ -90,8 +101,10 @@ let renderTimer: number | undefined;
 let currentInstance: RenderInstance | null = null;
 let currentKeyboardVisibility: KeyboardVisibility = "visible";
 let currentAbcAutoCheck: AbcAutoCheck = "enabled";
+let currentEditorWrap: EditorWrap = "disabled";
 let explicitLayoutMode: LayoutMode = "auto";
 let isResizing = false;
+let currentSourceHighlightKey = "";
 
 void initializeStudio();
 
@@ -109,25 +122,34 @@ async function initializeStudio(): Promise<void> {
   const settings = await loadStudioSettings();
   currentKeyboardVisibility = settings.keyboardVisibility;
   currentAbcAutoCheck = settings.abcAutoCheck;
+  currentEditorWrap = settings.editorWrap;
   themeModeForm.themeMode.value = settings.themeMode;
   layoutModeForm.layoutMode.value = settings.layoutMode;
   explicitLayoutMode = settings.layoutMode;
 
   autoCheckInput.checked = settings.abcAutoCheck === "enabled";
+  applyEditorWrap(settings.editorWrap);
   applyStudioTheme(settings.themeMode);
   applyStudioLayoutMode(settings.layoutMode);
 
   input.addEventListener("input", () => {
+    clearSourceHighlight();
     updateSourceStats();
     window.localStorage.setItem(STUDIO_SOURCE_STORAGE_KEY, input.value);
     hideQualityPanel();
     renderStatus.textContent = "Checking...";
     scheduleRender();
   });
+  input.addEventListener("scroll", syncSourceHighlightScroll);
 
   autoCheckInput.addEventListener("change", () => {
     void updateAbcAutoCheckSetting(
       autoCheckInput.checked ? "enabled" : "disabled",
+    );
+  });
+  editorWrapInput.addEventListener("change", () => {
+    void updateEditorWrapSetting(
+      editorWrapInput.checked ? "enabled" : "disabled",
     );
   });
   copySourceButton.addEventListener("click", () => {
@@ -193,6 +215,20 @@ async function updateAbcAutoCheckSetting(
   autoCheckInput.checked = abcAutoCheck === "enabled";
   await saveStudioAbcAutoCheck(abcAutoCheck);
   checkCurrentAbcSource();
+}
+
+async function updateEditorWrapSetting(editorWrap: EditorWrap): Promise<void> {
+  applyEditorWrap(editorWrap);
+  await saveStudioEditorWrap(editorWrap);
+}
+
+function applyEditorWrap(editorWrap: EditorWrap): void {
+  currentEditorWrap = normalizeEditorWrap(editorWrap);
+  editorWrapInput.checked = currentEditorWrap === "enabled";
+  editorFrame.dataset.editorWrap = currentEditorWrap;
+  input.wrap = currentEditorWrap === "enabled" ? "soft" : "off";
+  if (currentEditorWrap === "enabled") input.scrollLeft = 0;
+  syncSourceHighlightScroll();
 }
 
 function restoreSplitSizes(): void {
@@ -317,8 +353,109 @@ function readAbcFromUrlHash(): string | null {
 
 function setInputValue(value: string): void {
   input.value = value;
+  clearSourceHighlight();
   window.localStorage.setItem(STUDIO_SOURCE_STORAGE_KEY, value);
   updateSourceStats();
+}
+
+function clearSourceHighlight(): void {
+  updateSourceHighlight([]);
+}
+
+function updateSourceHighlight(ranges: SourceHighlightRange[]): void {
+  const normalizedRanges = normalizeSourceHighlightRanges(
+    ranges,
+    input.value.length,
+  );
+  const nextKey = normalizedRanges
+    .map((range) => `${range.start}:${range.end}`)
+    .join(";");
+  if (nextKey === currentSourceHighlightKey) {
+    syncSourceHighlightScroll();
+    return;
+  }
+
+  currentSourceHighlightKey = nextKey;
+  sourceHighlightMirror.hidden = normalizedRanges.length === 0;
+  if (normalizedRanges.length === 0) {
+    sourceHighlightMirror.replaceChildren();
+    return;
+  }
+
+  sourceHighlightMirror.replaceChildren(
+    createSourceHighlightFragment(input.value, normalizedRanges),
+  );
+  syncSourceHighlightScroll();
+}
+
+function syncSourceHighlightScroll(): void {
+  sourceHighlightMirror.scrollTop = input.scrollTop;
+  sourceHighlightMirror.scrollLeft = input.scrollLeft;
+}
+
+function normalizeSourceHighlightRanges(
+  ranges: SourceHighlightRange[],
+  sourceLength: number,
+): SourceHighlightRange[] {
+  const boundedRanges = ranges
+    .map((range) => ({
+      start: clamp(range.start, 0, sourceLength),
+      end: clamp(range.end, 0, sourceLength),
+    }))
+    .filter((range) => range.end > range.start)
+    .sort(
+      (first, second) => first.start - second.start || first.end - second.end,
+    );
+  const mergedRanges: SourceHighlightRange[] = [];
+
+  for (const range of boundedRanges) {
+    const previousRange = mergedRanges[mergedRanges.length - 1];
+    if (previousRange && range.start <= previousRange.end) {
+      previousRange.end = Math.max(previousRange.end, range.end);
+    } else {
+      mergedRanges.push({ ...range });
+    }
+  }
+
+  return mergedRanges;
+}
+
+function createSourceHighlightFragment(
+  sourceText: string,
+  ranges: SourceHighlightRange[],
+): DocumentFragment {
+  const fragment = document.createDocumentFragment();
+  let position = 0;
+
+  for (const range of ranges) {
+    if (range.start > position) {
+      fragment.append(
+        document.createTextNode(sourceText.slice(position, range.start)),
+      );
+    }
+
+    const highlight = document.createElement("mark");
+    highlight.className = "abc-highlight-token";
+    highlight.textContent = sourceText.slice(range.start, range.end);
+    fragment.append(highlight);
+    position = range.end;
+  }
+
+  if (position < sourceText.length) {
+    fragment.append(document.createTextNode(sourceText.slice(position)));
+  }
+
+  return fragment;
+}
+
+function offsetSourceHighlightRanges(
+  ranges: SourceHighlightRange[],
+  offset: number,
+): SourceHighlightRange[] {
+  return ranges.map((range) => ({
+    start: range.start + offset,
+    end: range.end + offset,
+  }));
 }
 
 function updateSourceStats(): void {
@@ -482,6 +619,8 @@ function renderCurrentInput(): void {
   }
 
   const abcText = input.value.trim();
+  const sourceOffset = abcText ? input.value.indexOf(abcText) : 0;
+  clearSourceHighlight();
   sourceElement.textContent = abcText;
 
   if (!abcText) {
@@ -499,6 +638,13 @@ function renderCurrentInput(): void {
       getSelectedThemeMode(),
       "collapsed",
       currentKeyboardVisibility,
+      {
+        onSourceHighlight: (ranges) => {
+          updateSourceHighlight(
+            offsetSourceHighlightRanges(ranges, sourceOffset),
+          );
+        },
+      },
     );
     currentInstance.container.dataset.chatmusicLayout = "studio";
     renderMount.classList.add("has-render");

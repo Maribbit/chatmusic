@@ -9,6 +9,8 @@ This project follows a lightweight [Keep a Changelog](https://keepachangelog.com
 ### Added
 
 - Rendered ABC scores now automatically wrap systems to the available score pane width, improving readability for long generated or converted ABC sources.
+- Studio now has a source editor line-wrap toggle for long ABC lines.
+- Studio playback now highlights the corresponding ABC source range while notes play.
 - Studio now links to external MusicXML/ABC conversion tools instead of running an incomplete built-in MusicXML converter.
 
 ### Removed
@@ -20,6 +22,7 @@ This project follows a lightweight [Keep a Changelog](https://keepachangelog.com
 - ABC parser warning panels in rendered score cards now render as complete block panels instead of fragmented inline borders, and long abcjs messages wrap inside the card.
 - Popup detection toggles now apply immediately to the active tab, including pages that were open before the extension loaded or reloaded.
 - Playback progress bars now seek continuously while dragging, including before the first playback starts.
+- Studio split panes now keep narrow editor contents clipped to the editor pane instead of letting the source area overlap the preview.
 - Studio ABC source editor now fills the available pane height when the quality panel is hidden.
 - Playback no longer starts an automatic full-piano soundfont warmup that could leave abcjs note caches in a failed state after transient sample-load errors.
 

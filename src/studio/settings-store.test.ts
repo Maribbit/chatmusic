@@ -1,12 +1,14 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   ABC_AUTO_CHECK_STORAGE_KEY,
+  EDITOR_WRAP_STORAGE_KEY,
   KEYBOARD_VISIBILITY_STORAGE_KEY,
   THEME_MODE_STORAGE_KEY,
 } from "../shared/settings";
 import {
   loadStudioSettings,
   saveStudioAbcAutoCheck,
+  saveStudioEditorWrap,
   saveStudioThemeMode,
 } from "./settings-store";
 
@@ -45,12 +47,14 @@ describe("Studio settings store", () => {
     window.localStorage.setItem(THEME_MODE_STORAGE_KEY, "dark");
     window.localStorage.setItem(KEYBOARD_VISIBILITY_STORAGE_KEY, "hidden");
     window.localStorage.setItem(ABC_AUTO_CHECK_STORAGE_KEY, "disabled");
+    window.localStorage.setItem(EDITOR_WRAP_STORAGE_KEY, "enabled");
 
     await expect(loadStudioSettings()).resolves.toEqual({
       themeMode: "dark",
       layoutMode: "auto",
       keyboardVisibility: "hidden",
       abcAutoCheck: "disabled",
+      editorWrap: "enabled",
     });
   });
 
@@ -58,6 +62,7 @@ describe("Studio settings store", () => {
     window.localStorage.setItem(THEME_MODE_STORAGE_KEY, "sepia");
     window.localStorage.setItem(KEYBOARD_VISIBILITY_STORAGE_KEY, "maybe");
     window.localStorage.setItem(ABC_AUTO_CHECK_STORAGE_KEY, "maybe");
+    window.localStorage.setItem(EDITOR_WRAP_STORAGE_KEY, "maybe");
     window.localStorage.setItem("layoutMode", "diagonal");
 
     await expect(loadStudioSettings()).resolves.toEqual({
@@ -65,6 +70,7 @@ describe("Studio settings store", () => {
       layoutMode: "auto",
       keyboardVisibility: "visible",
       abcAutoCheck: "enabled",
+      editorWrap: "disabled",
     });
   });
 
@@ -76,6 +82,7 @@ describe("Studio settings store", () => {
           layoutMode: "horizontal",
           [KEYBOARD_VISIBILITY_STORAGE_KEY]: "hidden",
           [ABC_AUTO_CHECK_STORAGE_KEY]: "disabled",
+          [EDITOR_WRAP_STORAGE_KEY]: "enabled",
         });
       },
     );
@@ -86,6 +93,7 @@ describe("Studio settings store", () => {
       layoutMode: "horizontal",
       keyboardVisibility: "hidden",
       abcAutoCheck: "disabled",
+      editorWrap: "enabled",
     });
     expect(get).toHaveBeenCalledWith(
       [
@@ -93,6 +101,7 @@ describe("Studio settings store", () => {
         "layoutMode",
         KEYBOARD_VISIBILITY_STORAGE_KEY,
         ABC_AUTO_CHECK_STORAGE_KEY,
+        EDITOR_WRAP_STORAGE_KEY,
       ],
       expect.any(Function),
     );
@@ -137,6 +146,27 @@ describe("Studio settings store", () => {
 
     expect(window.localStorage.getItem(ABC_AUTO_CHECK_STORAGE_KEY)).toBe(
       "disabled",
+    );
+  });
+
+  it("saves editor wrap to extension storage when available", async () => {
+    const set = vi.fn();
+    setChromeStorageMock({
+      get: vi.fn(),
+      set,
+    });
+
+    await saveStudioEditorWrap("enabled");
+
+    expect(set).toHaveBeenCalledWith({ [EDITOR_WRAP_STORAGE_KEY]: "enabled" });
+    expect(window.localStorage.getItem(EDITOR_WRAP_STORAGE_KEY)).toBeNull();
+  });
+
+  it("saves editor wrap to localStorage outside extension runtime", async () => {
+    await saveStudioEditorWrap("enabled");
+
+    expect(window.localStorage.getItem(EDITOR_WRAP_STORAGE_KEY)).toBe(
+      "enabled",
     );
   });
 });

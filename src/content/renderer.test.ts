@@ -5,8 +5,17 @@ const mocks = vi.hoisted(() => {
   const pause = vi.fn();
   const seek = vi.fn();
   const setProgress = vi.fn();
+  const cursorControls: Array<{
+    onEvent?: (event: {
+      endChar?: number;
+      milliseconds: number;
+      startChar?: number;
+    }) => void;
+    onFinished?: () => void;
+  }> = [];
 
   return {
+    cursorControls,
     play,
     pause,
     seek,
@@ -39,7 +48,11 @@ vi.mock("abcjs", () => ({
         isLoaded = false;
         percent = 0;
 
-        load(parent: HTMLElement): void {
+        load(
+          parent: HTMLElement,
+          cursorControl: (typeof mocks.cursorControls)[number],
+        ): void {
+          mocks.cursorControls.push(cursorControl);
           parent.innerHTML = `
             <div class="abcjs-inline-audio">
               <button type="button" class="abcjs-midi-start"></button>
@@ -98,7 +111,11 @@ vi.mock("abcjs", () => ({
   },
 }));
 
-import { removeDisconnectedRenders, renderAbc } from "./renderer";
+import {
+  getSourceHighlightRangesForTest,
+  removeDisconnectedRenders,
+  renderAbc,
+} from "./renderer";
 
 beforeAll(() => {
   Object.defineProperty(HTMLElement.prototype, "scrollTo", {
@@ -271,5 +288,54 @@ describe("render lifecycle", () => {
     playButton.click();
 
     expect(mocks.play).toHaveBeenCalledWith(0.75);
+  });
+
+  it("normalizes playback source highlight ranges", () => {
+    expect(
+      getSourceHighlightRangesForTest(
+        {
+          milliseconds: 0,
+          startCharArray: [8, 16, 8, null],
+          endCharArray: [9, 18, 9, 24],
+        },
+        20,
+      ),
+    ).toEqual([
+      { start: 8, end: 9 },
+      { start: 16, end: 18 },
+    ]);
+
+    expect(
+      getSourceHighlightRangesForTest(
+        {
+          milliseconds: 0,
+          startChar: 22,
+          endChar: 30,
+        },
+        24,
+      ),
+    ).toEqual([{ start: 22, end: 24 }]);
+  });
+
+  it("notifies source highlight callbacks during playback events", async () => {
+    const pre = document.createElement("pre");
+    document.body.append(pre);
+    const onSourceHighlight = vi.fn();
+
+    renderAbc(pre, "X:1\nK:C\nC|", undefined, undefined, undefined, {
+      onSourceHighlight,
+    });
+    await Promise.resolve();
+    const cursorControl = mocks.cursorControls[mocks.cursorControls.length - 1];
+
+    cursorControl?.onEvent?.({
+      milliseconds: 0,
+      startChar: 8,
+      endChar: 9,
+    });
+    cursorControl?.onFinished?.();
+
+    expect(onSourceHighlight).toHaveBeenCalledWith([{ start: 8, end: 9 }]);
+    expect(onSourceHighlight).toHaveBeenLastCalledWith([]);
   });
 });
