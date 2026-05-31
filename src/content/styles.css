@@ -296,6 +296,8 @@ chatmusic-keyboard-toggle {
 }
 
 .chatmusic-quality-panel {
+  display: block;
+  max-width: 100%;
   margin: 0 0 8px;
   padding: 10px;
   border: 1px solid var(--chatmusic-warning-border);
@@ -358,6 +360,8 @@ chatmusic-keyboard-toggle {
 .chatmusic-quality-item {
   display: grid;
   gap: 2px;
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 
 .chatmusic-quality-title {
