@@ -35,7 +35,11 @@ vi.mock("abcjs", () => ({
       },
       playEvent: vi.fn(() => Promise.resolve()),
       CreateSynth: class {
-        init(): Promise<{ cached: string[]; error: string[]; loaded: string[] }> {
+        init(): Promise<{
+          cached: string[];
+          error: string[];
+          loaded: string[];
+        }> {
           return Promise.resolve({ cached: [], error: [], loaded: [] });
         }
       },
@@ -98,9 +102,32 @@ describe("render lifecycle", () => {
     await Promise.resolve();
     const shadowRoot = instance.container.shadowRoot;
 
-    expect(shadowRoot?.querySelector(".chatmusic-quality-panel")?.textContent)
-      .toContain("Unknown character ignored");
-    expect(shadowRoot?.querySelector(".chatmusic-quality-panel")?.textContent)
-      .toContain("Line 4, column 5");
+    expect(
+      shadowRoot?.querySelector(".chatmusic-quality-panel")?.textContent,
+    ).toContain("Unknown character ignored");
+    expect(
+      shadowRoot?.querySelector(".chatmusic-quality-panel")?.textContent,
+    ).toContain("Line 4, column 5");
+  });
+
+  it("renders scores with abcjs line wrapping enabled", () => {
+    const pre = document.createElement("pre");
+    document.body.append(pre);
+
+    renderAbc(pre, "X:1\nK:C\nC|D|E|F|");
+
+    expect(mocks.renderAbc).toHaveBeenCalledWith(
+      expect.any(HTMLElement),
+      expect.any(String),
+      expect.objectContaining({
+        responsive: "resize",
+        staffwidth: 716,
+        wrap: expect.objectContaining({
+          preferredMeasuresPerLine: 4,
+          minSpacing: 1.2,
+          maxSpacing: 2.4,
+        }),
+      }),
+    );
   });
 });

@@ -27,6 +27,10 @@ pnpm-debug.log*
 *.pem
 *.zip
 
+# Local third-party converter downloads (LGPL reference tools)
+/abc2xml.py
+/xml2abc.js
+
 # OS files
 .DS_Store
 Thumbs.db

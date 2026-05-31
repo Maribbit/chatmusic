@@ -136,11 +136,15 @@ button {
 }
 
 .secondary-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   padding: 0 12px;
   border: 1px solid var(--studio-border);
   background: var(--studio-panel);
   color: var(--studio-text);
   font-size: 13px;
+  text-decoration: none;
 }
 
 .secondary-button:hover {

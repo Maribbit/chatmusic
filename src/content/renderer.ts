@@ -55,8 +55,11 @@ export interface RenderInstance {
   abcText: string;
   themeMode: ThemeMode;
   visualObj: abcjs.TuneObject[] | null;
+  renderedStaffWidth: number;
   synthControl: abcjs.SynthObjectController | null;
   activePlaybackElements: Element[];
+  scoreResizeObserver: ResizeObserver | null;
+  scoreResizeTimer: number | undefined;
   cleanup: () => void;
 }
 
@@ -89,6 +92,18 @@ interface SeekableSynthControl extends abcjs.SynthObjectController {
 
 const instances = new Map<Element, RenderInstance>();
 const shadowStyles = `${abcjsAudioStyles}\n${chatmusicStyles}`;
+const DEFAULT_STAFF_WIDTH = 740;
+const MIN_STAFF_WIDTH = 320;
+const SCORE_WIDTH_PADDING = 24;
+const STAFF_WIDTH_CHANGE_THRESHOLD = 24;
+const SCORE_RESIZE_DEBOUNCE_MS = 180;
+const SCORE_WRAP_OPTIONS: abcjs.Wrap = {
+  preferredMeasuresPerLine: 4,
+  minSpacing: 1.2,
+  maxSpacing: 2.4,
+  lastLineLimit: 1.4,
+  minSpacingLimit: 1,
+};
 
 /**
  * Initialize the abcjs SynthController for playback.
@@ -350,13 +365,13 @@ export function renderAbc(
   );
 
   // Render sheet music SVG
-  const visualObj = abcjs.renderAbc(elements.scoreElement, abcText, {
-    responsive: "resize",
-    add_classes: true,
-    clickListener: (abcElement: AbcElementRef) => {
+  const scoreRender = renderScore(
+    elements.scoreElement,
+    abcText,
+    (abcElement) => {
       if (instance) void seekToAbcElement(instance, abcElement);
     },
-  });
+  );
 
   instance = {
     container: elements.container,
@@ -372,10 +387,14 @@ export function renderAbc(
     isCodeCollapsed: false,
     abcText,
     themeMode,
-    visualObj,
+    visualObj: scoreRender.visualObj,
+    renderedStaffWidth: scoreRender.staffWidth,
     synthControl: null,
     activePlaybackElements: [],
+    scoreResizeObserver: null,
+    scoreResizeTimer: undefined,
     cleanup: () => {
+      if (instance) disposeScoreResizeObserver(instance);
       keyboard.dispose();
       elements.cleanup();
     },
@@ -386,6 +405,7 @@ export function renderAbc(
   applyKeyboardVisibility(instance, keyboardVisibility);
   setupKeyboard(instance);
   instances.set(preElement, instance);
+  setupScoreResizeObserver(instance);
 
   // Initialize synth (async, non-blocking)
   initSynth(instance);
@@ -492,16 +512,17 @@ function updateRender(
   clearPlaybackHighlight(instance);
 
   // Re-render SVG
-  const visualObj = abcjs.renderAbc(instance.scoreElement, abcText, {
-    responsive: "resize",
-    add_classes: true,
-    clickListener: (abcElement: AbcElementRef) => {
+  const scoreRender = renderScore(
+    instance.scoreElement,
+    abcText,
+    (abcElement) => {
       void seekToAbcElement(instance, abcElement);
     },
-  });
+  );
 
   instance.abcText = abcText;
-  instance.visualObj = visualObj;
+  instance.visualObj = scoreRender.visualObj;
+  instance.renderedStaffWidth = scoreRender.staffWidth;
   setupKeyboard(instance);
   updateQualityPanel(instance);
 
@@ -513,6 +534,87 @@ function updateRender(
   initSynth(instance);
 
   return instance;
+}
+
+function renderScore(
+  scoreElement: HTMLElement,
+  abcText: string,
+  clickListener: (abcElement: AbcElementRef) => void,
+): { visualObj: abcjs.TuneObject[]; staffWidth: number } {
+  const staffWidth = getScoreStaffWidth(scoreElement);
+  const visualObj = abcjs.renderAbc(scoreElement, abcText, {
+    responsive: "resize",
+    add_classes: true,
+    staffwidth: staffWidth,
+    wrap: { ...SCORE_WRAP_OPTIONS },
+    clickListener,
+  });
+
+  return { visualObj, staffWidth };
+}
+
+function getScoreStaffWidth(scoreElement: HTMLElement): number {
+  const measuredWidth = Math.floor(
+    scoreElement.getBoundingClientRect().width || scoreElement.clientWidth,
+  );
+  const availableWidth = measuredWidth || DEFAULT_STAFF_WIDTH;
+
+  return Math.max(MIN_STAFF_WIDTH, availableWidth - SCORE_WIDTH_PADDING);
+}
+
+function setupScoreResizeObserver(instance: RenderInstance): void {
+  if (typeof ResizeObserver === "undefined") return;
+
+  instance.scoreResizeObserver = new ResizeObserver(() => {
+    if (instance.scoreResizeTimer !== undefined) {
+      window.clearTimeout(instance.scoreResizeTimer);
+    }
+
+    instance.scoreResizeTimer = window.setTimeout(() => {
+      instance.scoreResizeTimer = undefined;
+      rerenderScoreForLayout(instance);
+    }, SCORE_RESIZE_DEBOUNCE_MS);
+  });
+  instance.scoreResizeObserver.observe(instance.scoreElement);
+}
+
+function rerenderScoreForLayout(instance: RenderInstance): void {
+  if (!instance.container.isConnected) return;
+
+  const nextStaffWidth = getScoreStaffWidth(instance.scoreElement);
+  if (
+    Math.abs(nextStaffWidth - instance.renderedStaffWidth) <
+    STAFF_WIDTH_CHANGE_THRESHOLD
+  ) {
+    return;
+  }
+
+  clearPlaybackHighlight(instance);
+  const scoreRender = renderScore(
+    instance.scoreElement,
+    instance.abcText,
+    (abcElement) => {
+      void seekToAbcElement(instance, abcElement);
+    },
+  );
+  instance.visualObj = scoreRender.visualObj;
+  instance.renderedStaffWidth = scoreRender.staffWidth;
+  setupKeyboard(instance);
+
+  if (instance.synthControl) {
+    instance.synthControl.pause();
+    instance.synthControl = null;
+    initSynth(instance);
+  }
+}
+
+function disposeScoreResizeObserver(instance: RenderInstance): void {
+  if (instance.scoreResizeTimer !== undefined) {
+    window.clearTimeout(instance.scoreResizeTimer);
+    instance.scoreResizeTimer = undefined;
+  }
+  instance.scoreResizeObserver?.disconnect();
+  instance.scoreResizeObserver = null;
 }
 
 function applyTheme(instance: RenderInstance, themeMode: ThemeMode): void {

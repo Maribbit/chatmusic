@@ -16,7 +16,6 @@ import {
   getAbcSourceDownloadFilename,
   importAbcFile,
 } from "../shared/abc-file";
-import { importMusicXmlFile } from "../shared/musicxml-file";
 import {
   renderAbc,
   removeRender,
@@ -57,34 +56,28 @@ const sourceStats = document.getElementById("sourceStats") as HTMLElement;
 const renderStatus = document.getElementById("renderStatus") as HTMLElement;
 const qualityPanel = document.getElementById("qualityPanel") as HTMLElement;
 const themeModeSelect = document.getElementById(
-  "themeModeSelect"
+  "themeModeSelect",
 ) as HTMLSelectElement;
 const checkAbcButton = document.getElementById(
-  "checkAbcButton"
+  "checkAbcButton",
 ) as HTMLButtonElement;
 const autoCheckInput = document.getElementById(
-  "autoCheckInput"
+  "autoCheckInput",
 ) as HTMLInputElement;
 const copySourceButton = document.getElementById(
-  "copySourceButton"
+  "copySourceButton",
 ) as HTMLButtonElement;
 const importAbcButton = document.getElementById(
-  "importAbcButton"
+  "importAbcButton",
 ) as HTMLButtonElement;
 const abcFileInput = document.getElementById(
-  "abcFileInput"
+  "abcFileInput",
 ) as HTMLInputElement;
 const exportAbcButton = document.getElementById(
-  "exportAbcButton"
+  "exportAbcButton",
 ) as HTMLButtonElement;
-const importMusicXmlButton = document.getElementById(
-  "importMusicXmlButton"
-) as HTMLButtonElement;
-const musicXmlInput = document.getElementById(
-  "musicXmlInput"
-) as HTMLInputElement;
 const loadExampleButton = document.getElementById(
-  "loadExampleButton"
+  "loadExampleButton",
 ) as HTMLButtonElement;
 const clearButton = document.getElementById("clearButton") as HTMLButtonElement;
 const colorSchemeQuery = window.matchMedia("(prefers-color-scheme: dark)");
@@ -128,7 +121,7 @@ async function initializeStudio(): Promise<void> {
   });
   autoCheckInput.addEventListener("change", () => {
     void updateAbcAutoCheckSetting(
-      autoCheckInput.checked ? "enabled" : "disabled"
+      autoCheckInput.checked ? "enabled" : "disabled",
     );
   });
   copySourceButton.addEventListener("click", () => {
@@ -142,12 +135,6 @@ async function initializeStudio(): Promise<void> {
   });
   exportAbcButton.addEventListener("click", () => {
     exportCurrentAbcFile();
-  });
-  importMusicXmlButton.addEventListener("click", () => {
-    musicXmlInput.click();
-  });
-  musicXmlInput.addEventListener("change", () => {
-    void importSelectedMusicXmlFile();
   });
   loadExampleButton.addEventListener("click", () => {
     setInputValue(EXAMPLE_ABC);
@@ -181,7 +168,7 @@ async function initializeStudio(): Promise<void> {
 }
 
 async function updateAbcAutoCheckSetting(
-  abcAutoCheck: AbcAutoCheck
+  abcAutoCheck: AbcAutoCheck,
 ): Promise<void> {
   currentAbcAutoCheck = abcAutoCheck;
   autoCheckInput.checked = abcAutoCheck === "enabled";
@@ -197,10 +184,10 @@ async function updateAbcAutoCheckSetting(
 
 function restoreSplitSizes(): void {
   const desktopSplit = window.localStorage.getItem(
-    STUDIO_DESKTOP_SPLIT_STORAGE_KEY
+    STUDIO_DESKTOP_SPLIT_STORAGE_KEY,
   );
   const mobileSplit = window.localStorage.getItem(
-    STUDIO_MOBILE_SPLIT_STORAGE_KEY
+    STUDIO_MOBILE_SPLIT_STORAGE_KEY,
   );
 
   if (desktopSplit) {
@@ -214,7 +201,7 @@ function restoreSplitSizes(): void {
 function updateResizerOrientation(): void {
   studioResizer.setAttribute(
     "aria-orientation",
-    isStackedLayout() ? "horizontal" : "vertical"
+    isStackedLayout() ? "horizontal" : "vertical",
   );
 }
 
@@ -234,9 +221,13 @@ function resizeFromPointer(event: PointerEvent): void {
   if (!isResizing) return;
 
   if (isStackedLayout()) {
-    setMobileEditorHeight(event.clientY - editorPane.getBoundingClientRect().top);
+    setMobileEditorHeight(
+      event.clientY - editorPane.getBoundingClientRect().top,
+    );
   } else {
-    setDesktopEditorWidth(event.clientX - studioShell.getBoundingClientRect().left);
+    setDesktopEditorWidth(
+      event.clientX - studioShell.getBoundingClientRect().left,
+    );
   }
 }
 
@@ -272,7 +263,8 @@ function getResizeDelta(event: KeyboardEvent, stackedLayout: boolean): number {
 }
 
 function setDesktopEditorWidth(width: number): void {
-  const maxWidth = studioShell.getBoundingClientRect().width - MIN_DESKTOP_PREVIEW_WIDTH;
+  const maxWidth =
+    studioShell.getBoundingClientRect().width - MIN_DESKTOP_PREVIEW_WIDTH;
   const editorWidth = clamp(width, MIN_DESKTOP_EDITOR_WIDTH, maxWidth);
   const value = `${editorWidth}px`;
 
@@ -316,7 +308,8 @@ function setInputValue(value: string): void {
 
 function updateSourceStats(): void {
   const characterCount = input.value.length;
-  const lineCount = input.value.length === 0 ? 0 : input.value.split("\n").length;
+  const lineCount =
+    input.value.length === 0 ? 0 : input.value.split("\n").length;
   sourceStats.textContent = `${lineCount} lines, ${characterCount} chars`;
   checkAbcButton.disabled = characterCount === 0;
   copySourceButton.disabled = characterCount === 0;
@@ -439,7 +432,7 @@ async function importSelectedAbcFile(): Promise<void> {
     setImportCompleteStatus("Opened ABC");
   } catch (error) {
     console.error("[ChatMusic Studio] ABC import failed:", error);
-    renderStatus.textContent = getImportErrorMessage(error);
+    renderStatus.textContent = getAbcImportErrorMessage(error);
   } finally {
     importAbcButton.disabled = false;
     abcFileInput.value = "";
@@ -455,34 +448,13 @@ function exportCurrentAbcFile(): void {
   window.setTimeout(updateSourceStats, 1200);
 }
 
-async function importSelectedMusicXmlFile(): Promise<void> {
-  const file = musicXmlInput.files?.[0];
-  if (!file) return;
-
-  renderStatus.textContent = "Importing...";
-  importMusicXmlButton.disabled = true;
-
-  try {
-    const abcText = await importMusicXmlFile(file);
-    setInputValue(abcText);
-    renderCurrentInput();
-    setImportCompleteStatus("Imported MusicXML");
-  } catch (error) {
-    console.error("[ChatMusic Studio] MusicXML import failed:", error);
-    renderStatus.textContent = getImportErrorMessage(error);
-  } finally {
-    importMusicXmlButton.disabled = false;
-    musicXmlInput.value = "";
-  }
-}
-
 function setImportCompleteStatus(message: string): void {
   if (qualityPanel.hidden) renderStatus.textContent = message;
 }
 
-function getImportErrorMessage(error: unknown): string {
+function getAbcImportErrorMessage(error: unknown): string {
   if (error instanceof Error) return error.message;
-  return "MusicXML import failed";
+  return "ABC import failed";
 }
 
 function scheduleRender(): void {
@@ -514,7 +486,7 @@ function renderCurrentInput(): void {
       abcText,
       getSelectedThemeMode(),
       "collapsed",
-      currentKeyboardVisibility
+      currentKeyboardVisibility,
     );
     currentInstance.container.dataset.chatmusicLayout = "studio";
     renderMount.classList.add("has-render");
