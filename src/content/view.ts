@@ -12,21 +12,26 @@ export interface RenderViewElements {
   qualityPanelElement: HTMLElement;
   qualitySummaryElement: HTMLElement;
   qualityListElement: HTMLElement;
-  qualityCopyButton: HTMLButtonElement;
   tempoMenuElement: HTMLElement;
   tempoInputElement: HTMLInputElement;
   tempoBpmElement: HTMLElement;
-  exportButton: HTMLButtonElement;
-  midiExportButton: HTMLButtonElement;
-  studioButton: HTMLButtonElement;
   codeToggleButton: HTMLButtonElement;
   cleanup: () => void;
+}
+
+export interface RenderViewHandlers {
+  onCopyQualityFeedback?: () => void;
+  onExportScore?: () => void;
+  onExportMidi?: () => void;
+  onOpenStudio?: () => void;
+  onToggleCode?: () => void;
 }
 
 export function createRenderView(
   preElement: Element,
   themeMode: ThemeMode,
   shadowStyles: string,
+  handlers: RenderViewHandlers = {},
 ): RenderViewElements {
   const host = document.createElement("div");
   host.className = "chatmusic-host";
@@ -43,7 +48,12 @@ export function createRenderView(
   const fullscreenButton = container.querySelector(
     ".chatmusic-fullscreen-button",
   ) as HTMLButtonElement;
-  const cleanup = setupFullscreenButton(host, fullscreenButton);
+  const cleanupFullscreenButton = setupFullscreenButton(host, fullscreenButton);
+  const cleanupActions = setupRenderViewActions(container, handlers);
+  const cleanup = () => {
+    cleanupActions();
+    cleanupFullscreenButton();
+  };
 
   shadowRoot.append(style, container);
   preElement.parentNode?.insertBefore(host, preElement.nextSibling);
@@ -67,9 +77,6 @@ export function createRenderView(
     qualityListElement: container.querySelector(
       ".chatmusic-quality-list",
     ) as HTMLElement,
-    qualityCopyButton: container.querySelector(
-      ".chatmusic-quality-copy-button",
-    ) as HTMLButtonElement,
     tempoMenuElement: container.querySelector(
       ".chatmusic-tempo-menu",
     ) as HTMLElement,
@@ -79,15 +86,6 @@ export function createRenderView(
     tempoBpmElement: container.querySelector(
       ".chatmusic-tempo-bpm-value",
     ) as HTMLElement,
-    exportButton: container.querySelector(
-      ".chatmusic-export-button",
-    ) as HTMLButtonElement,
-    midiExportButton: container.querySelector(
-      ".chatmusic-midi-export-button",
-    ) as HTMLButtonElement,
-    studioButton: container.querySelector(
-      ".chatmusic-studio-button",
-    ) as HTMLButtonElement,
     codeToggleButton: container.querySelector(
       ".chatmusic-code-toggle-button",
     ) as HTMLButtonElement,
@@ -235,7 +233,7 @@ function renderContainerTemplate(): TemplateResult {
       <ul class="chatmusic-quality-list"></ul>
     </div>
     <div class="chatmusic-score"></div>
-    <div class="chatmusic-keyboard"></div>
+    <chatmusic-keyboard class="chatmusic-keyboard"></chatmusic-keyboard>
     <div class="chatmusic-audio"></div>
   `;
 }
@@ -317,6 +315,54 @@ function renderCodeIcon(): TemplateResult {
     <path d="m6 8-4 4 4 4" />
     <path d="m14.5 4-5 16" />
   `);
+}
+
+function setupRenderViewActions(
+  container: HTMLElement,
+  handlers: RenderViewHandlers,
+): () => void {
+  const cleanupCallbacks = [
+    setupButtonAction(
+      container.querySelector(".chatmusic-quality-copy-button"),
+      handlers.onCopyQualityFeedback,
+    ),
+    setupButtonAction(
+      container.querySelector(".chatmusic-export-button"),
+      handlers.onExportScore,
+    ),
+    setupButtonAction(
+      container.querySelector(".chatmusic-midi-export-button"),
+      handlers.onExportMidi,
+    ),
+    setupButtonAction(
+      container.querySelector(".chatmusic-studio-button"),
+      handlers.onOpenStudio,
+      true,
+    ),
+    setupButtonAction(
+      container.querySelector(".chatmusic-code-toggle-button"),
+      handlers.onToggleCode,
+    ),
+  ];
+
+  return () => {
+    for (const cleanup of cleanupCallbacks) cleanup();
+  };
+}
+
+function setupButtonAction(
+  button: Element | null,
+  handler: (() => void) | undefined,
+  hideWhenMissing = false,
+): () => void {
+  if (!(button instanceof HTMLButtonElement)) return () => {};
+  if (!handler) {
+    if (hideWhenMissing) button.hidden = true;
+    return () => {};
+  }
+
+  button.addEventListener("click", handler);
+  return () => button.removeEventListener("click", handler);
 }
 
 function setupFullscreenButton(

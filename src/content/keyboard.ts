@@ -1,4 +1,4 @@
-import { html, render, type TemplateResult } from "lit";
+import { LitElement, html, type TemplateResult } from "lit";
 
 export interface MidiPitch {
   pitch?: number;
@@ -25,6 +25,12 @@ const MAX_WHITE_KEY_HEIGHT = 96;
 const WHITE_KEY_HEIGHT_RATIO = 3;
 const KEYBOARD_HORIZONTAL_PADDING = 16;
 const AUDITION_HIGHLIGHT_MS = 220;
+const KEYBOARD_TAG_NAME = "chatmusic-keyboard";
+const KEYBOARD_PITCH_EVENT = "chatmusic-pitch-trigger";
+
+interface KeyboardPitchEventDetail {
+  pitch: number;
+}
 
 export function createKeyboardController(
   keyboardElement: HTMLElement,
@@ -32,11 +38,8 @@ export function createKeyboardController(
   initialVisibility: boolean,
   onPitchTrigger?: KeyboardPitchHandler,
 ): KeyboardController {
+  const keyboard = keyboardElement as ChatMusicKeyboardElement;
   let isVisible = initialVisibility;
-  let focusStartPitch = MIDDLE_C_PITCH;
-  let focusEndPitch = MIDDLE_C_PITCH;
-  let activeKeys: HTMLElement[] = [];
-  const auditionTimers = new Map<HTMLElement, number>();
 
   const updateToggleButton = () => {
     const label = isVisible ? "Hide keyboard" : "Show keyboard";
@@ -46,36 +49,107 @@ export function createKeyboardController(
     toggleButton.setAttribute("aria-pressed", String(isVisible));
   };
 
-  const scrollToFocusRange = () => {
-    const startKey = keyboardElement.querySelector(
-      `[data-pitch="${focusStartPitch}"]`,
-    );
-    const endKey = keyboardElement.querySelector(
-      `[data-pitch="${focusEndPitch}"]`,
-    );
-    if (
-      !(startKey instanceof HTMLElement) ||
-      !(endKey instanceof HTMLElement)
-    ) {
-      return;
-    }
-
-    requestAnimationFrame(() => {
-      if (keyboardElement.hidden) return;
-
-      const start = startKey.offsetLeft;
-      const end = endKey.offsetLeft + endKey.offsetWidth;
-      const center = (start + end) / 2;
-      const scrollLeft = Math.max(0, center - keyboardElement.clientWidth / 2);
-
-      keyboardElement.scrollTo({ left: scrollLeft });
-    });
+  const setVisible = (nextVisibility: boolean) => {
+    isVisible = nextVisibility;
+    keyboard.setVisible(isVisible);
+    updateToggleButton();
   };
 
-  const syncSize = () => {
+  const toggleKeyboard = () => setVisible(!isVisible);
+  const triggerKeyboardPitch = (event: Event) => {
+    if (!onPitchTrigger) return;
+
+    const pitch = (event as CustomEvent<KeyboardPitchEventDetail>).detail
+      ?.pitch;
+    if (Number.isInteger(pitch)) void onPitchTrigger(pitch);
+  };
+
+  toggleButton.addEventListener("click", toggleKeyboard);
+  keyboard.addEventListener(KEYBOARD_PITCH_EVENT, triggerKeyboardPitch);
+  setVisible(initialVisibility);
+
+  return {
+    setup: (pitches: number[]) => keyboard.setup(pitches),
+    setVisible,
+    highlightPitches: (midiPitches: MidiPitch[]) =>
+      keyboard.highlightPitches(midiPitches),
+    clearActiveKeys: () => keyboard.clearActiveKeys(),
+    syncSize: () => keyboard.syncSize(),
+    dispose: () => {
+      toggleButton.removeEventListener("click", toggleKeyboard);
+      keyboard.removeEventListener(KEYBOARD_PITCH_EVENT, triggerKeyboardPitch);
+      keyboard.dispose();
+    },
+  };
+}
+
+export class ChatMusicKeyboardElement extends LitElement {
+  static properties = {
+    tunePitches: { attribute: false },
+    activePitches: { attribute: false },
+    auditionPitches: { attribute: false },
+  };
+
+  tunePitches: number[] = [];
+  activePitches: number[] = [];
+  auditionPitches: number[] = [];
+
+  private focusStartPitch = MIDDLE_C_PITCH;
+  private focusEndPitch = MIDDLE_C_PITCH;
+  private auditionTimers = new Map<number, number>();
+  private resizeObserver: ResizeObserver | null = null;
+
+  protected createRenderRoot(): HTMLElement {
+    return this;
+  }
+
+  connectedCallback(): void {
+    super.connectedCallback();
+
+    this.resizeObserver =
+      typeof ResizeObserver === "undefined"
+        ? null
+        : new ResizeObserver(() => {
+            this.syncSize();
+            if (!this.hidden) this.scrollToFocusRange();
+          });
+    this.resizeObserver?.observe(this);
+  }
+
+  disconnectedCallback(): void {
+    this.dispose();
+    super.disconnectedCallback();
+  }
+
+  setup(pitches: number[]): void {
+    this.clearAuditionPitches();
+    this.tunePitches = [...pitches];
+    this.activePitches = [];
+    this.focusStartPitch = pitches[0] ?? MIDDLE_C_PITCH;
+    this.focusEndPitch = pitches[pitches.length - 1] ?? MIDDLE_C_PITCH;
+
+    this.scheduleVisibleLayoutSync();
+  }
+
+  setVisible(isVisible: boolean): void {
+    this.hidden = !isVisible;
+    if (isVisible) this.scheduleVisibleLayoutSync();
+  }
+
+  highlightPitches(midiPitches: MidiPitch[]): void {
+    this.activePitches = midiPitches.flatMap((midiPitch) =>
+      midiPitch.pitch === undefined ? [] : [midiPitch.pitch],
+    );
+  }
+
+  clearActiveKeys(): void {
+    this.activePitches = [];
+  }
+
+  syncSize(): void {
     const availableWidth = Math.max(
       0,
-      keyboardElement.clientWidth - KEYBOARD_HORIZONTAL_PADDING,
+      this.clientWidth - KEYBOARD_HORIZONTAL_PADDING,
     );
     const whiteKeyWidth = Math.max(
       MIN_WHITE_KEY_WIDTH,
@@ -88,173 +162,151 @@ export function createKeyboardController(
     );
     const blackKeyHeight = whiteKeyHeight * 0.62;
 
-    keyboardElement.style.setProperty(
-      "--chatmusic-white-key-width",
-      `${whiteKeyWidth}px`,
-    );
-    keyboardElement.style.setProperty(
+    this.style.setProperty("--chatmusic-white-key-width", `${whiteKeyWidth}px`);
+    this.style.setProperty(
       "--chatmusic-white-key-height",
       `${whiteKeyHeight}px`,
     );
-    keyboardElement.style.setProperty(
-      "--chatmusic-black-key-width",
-      `${blackKeyWidth}px`,
-    );
-    keyboardElement.style.setProperty(
+    this.style.setProperty("--chatmusic-black-key-width", `${blackKeyWidth}px`);
+    this.style.setProperty(
       "--chatmusic-black-key-height",
       `${blackKeyHeight}px`,
     );
-    keyboardElement.style.setProperty(
+    this.style.setProperty(
       "--chatmusic-black-key-offset",
       `${-blackKeyWidth / 2}px`,
     );
-  };
-
-  const setVisible = (nextVisibility: boolean) => {
-    isVisible = nextVisibility;
-    keyboardElement.hidden = !isVisible;
-    updateToggleButton();
-
-    if (isVisible) {
-      syncSize();
-      scrollToFocusRange();
-    }
-  };
-
-  const setup = (pitches: number[]) => {
-    const tunePitches = new Set(pitches);
-    clearAuditionKeys();
-    render(renderKeyboardTemplate(tunePitches), keyboardElement);
-    activeKeys = [];
-    focusStartPitch = pitches[0] ?? MIDDLE_C_PITCH;
-    focusEndPitch = pitches[pitches.length - 1] ?? MIDDLE_C_PITCH;
-
-    syncSize();
-    setVisible(isVisible);
-  };
-
-  const clearActiveKeys = () => {
-    for (const key of activeKeys) {
-      key.classList.remove("chatmusic-key-active");
-    }
-    activeKeys = [];
-  };
-
-  const highlightPitches = (midiPitches: MidiPitch[]) => {
-    clearActiveKeys();
-
-    for (const midiPitch of midiPitches) {
-      if (midiPitch.pitch === undefined) continue;
-
-      const key = keyboardElement.querySelector(
-        `[data-pitch="${midiPitch.pitch}"]`,
-      );
-      if (key instanceof HTMLElement) {
-        key.classList.add("chatmusic-key-active");
-        activeKeys.push(key);
-      }
-    }
-  };
-
-  const clearAuditionKeys = () => {
-    for (const [key, timerId] of auditionTimers) {
-      window.clearTimeout(timerId);
-      key.classList.remove("chatmusic-key-auditioning");
-    }
-    auditionTimers.clear();
-  };
-
-  const flashAuditionKey = (key: HTMLElement) => {
-    const existingTimerId = auditionTimers.get(key);
-    if (existingTimerId !== undefined) window.clearTimeout(existingTimerId);
-
-    key.classList.add("chatmusic-key-auditioning");
-    auditionTimers.set(
-      key,
-      window.setTimeout(() => {
-        key.classList.remove("chatmusic-key-auditioning");
-        auditionTimers.delete(key);
-      }, AUDITION_HIGHLIGHT_MS),
-    );
-  };
-
-  const triggerKeyboardPitch = (event: MouseEvent) => {
-    if (!onPitchTrigger) return;
-
-    const target = event.target;
-    const key =
-      target instanceof Element ? target.closest(".chatmusic-piano-key") : null;
-    if (!(key instanceof HTMLElement)) return;
-
-    const pitch = Number(key.dataset.pitch);
-    if (!Number.isInteger(pitch)) return;
-
-    flashAuditionKey(key);
-    void onPitchTrigger(pitch);
-  };
-
-  const toggleKeyboard = () => setVisible(!isVisible);
-  const resizeObserver =
-    typeof ResizeObserver === "undefined"
-      ? null
-      : new ResizeObserver(() => {
-          syncSize();
-          if (isVisible) scrollToFocusRange();
-        });
-
-  toggleButton.addEventListener("click", toggleKeyboard);
-  keyboardElement.addEventListener("click", triggerKeyboardPitch);
-  resizeObserver?.observe(keyboardElement);
-  updateToggleButton();
-
-  return {
-    setup,
-    setVisible,
-    highlightPitches,
-    clearActiveKeys,
-    syncSize,
-    dispose: () => {
-      clearAuditionKeys();
-      toggleButton.removeEventListener("click", toggleKeyboard);
-      keyboardElement.removeEventListener("click", triggerKeyboardPitch);
-      resizeObserver?.disconnect();
-    },
-  };
-}
-
-function renderKeyboardTemplate(tunePitches: Set<number>): TemplateResult {
-  const pitches: number[] = [];
-
-  for (
-    let pitch = FULL_KEYBOARD_START_PITCH;
-    pitch <= FULL_KEYBOARD_END_PITCH;
-    pitch++
-  ) {
-    pitches.push(pitch);
   }
 
-  return html`${pitches.map((pitch) => renderPianoKey(pitch, tunePitches))}`;
+  dispose(): void {
+    this.clearAuditionPitches();
+    this.resizeObserver?.disconnect();
+    this.resizeObserver = null;
+  }
+
+  protected render(): TemplateResult {
+    const tunePitches = new Set(this.tunePitches);
+    const activePitches = new Set(this.activePitches);
+    const auditionPitches = new Set(this.auditionPitches);
+
+    return html`${this.getKeyboardPitches().map((pitch) =>
+      this.renderPianoKey(pitch, tunePitches, activePitches, auditionPitches),
+    )}`;
+  }
+
+  private getKeyboardPitches(): number[] {
+    const pitches: number[] = [];
+
+    for (
+      let pitch = FULL_KEYBOARD_START_PITCH;
+      pitch <= FULL_KEYBOARD_END_PITCH;
+      pitch++
+    ) {
+      pitches.push(pitch);
+    }
+
+    return pitches;
+  }
+
+  private renderPianoKey(
+    pitch: number,
+    tunePitches: Set<number>,
+    activePitches: Set<number>,
+    auditionPitches: Set<number>,
+  ): TemplateResult {
+    const noteName = getMidiNoteName(pitch);
+
+    return html`
+      <div
+        class=${getPianoKeyClassName(
+          pitch,
+          tunePitches,
+          activePitches,
+          auditionPitches,
+        )}
+        data-pitch=${String(pitch)}
+        data-note=${noteName}
+        title=${noteName}
+        role="button"
+        aria-label=${`Play ${noteName}`}
+        @click=${() => this.triggerKeyboardPitch(pitch)}
+      ></div>
+    `;
+  }
+
+  private triggerKeyboardPitch(pitch: number): void {
+    this.flashAuditionPitch(pitch);
+    this.dispatchEvent(
+      new CustomEvent<KeyboardPitchEventDetail>(KEYBOARD_PITCH_EVENT, {
+        bubbles: true,
+        composed: true,
+        detail: { pitch },
+      }),
+    );
+  }
+
+  private flashAuditionPitch(pitch: number): void {
+    const existingTimerId = this.auditionTimers.get(pitch);
+    if (existingTimerId !== undefined) window.clearTimeout(existingTimerId);
+
+    this.auditionPitches = [...new Set([...this.auditionPitches, pitch])];
+    this.auditionTimers.set(
+      pitch,
+      window.setTimeout(() => {
+        this.auditionPitches = this.auditionPitches.filter(
+          (activePitch) => activePitch !== pitch,
+        );
+        this.auditionTimers.delete(pitch);
+      }, AUDITION_HIGHLIGHT_MS),
+    );
+  }
+
+  private clearAuditionPitches(): void {
+    for (const timerId of this.auditionTimers.values()) {
+      window.clearTimeout(timerId);
+    }
+    this.auditionTimers.clear();
+    this.auditionPitches = [];
+  }
+
+  private scheduleVisibleLayoutSync(): void {
+    void this.updateComplete.then(() => {
+      this.syncSize();
+      if (!this.hidden) this.scrollToFocusRange();
+    });
+  }
+
+  private scrollToFocusRange(): void {
+    const startKey = this.querySelector(
+      `[data-pitch="${this.focusStartPitch}"]`,
+    );
+    const endKey = this.querySelector(`[data-pitch="${this.focusEndPitch}"]`);
+    if (
+      !(startKey instanceof HTMLElement) ||
+      !(endKey instanceof HTMLElement)
+    ) {
+      return;
+    }
+
+    requestAnimationFrame(() => {
+      if (this.hidden) return;
+
+      const start = startKey.offsetLeft;
+      const end = endKey.offsetLeft + endKey.offsetWidth;
+      const center = (start + end) / 2;
+      const scrollLeft = Math.max(0, center - this.clientWidth / 2);
+
+      this.scrollTo({ left: scrollLeft });
+    });
+  }
 }
 
-function renderPianoKey(
+function getPianoKeyClassName(
   pitch: number,
   tunePitches: Set<number>,
-): TemplateResult {
-  const noteName = getMidiNoteName(pitch);
-
-  return html`
-    <div
-      class=${getPianoKeyClassName(pitch, tunePitches)}
-      data-pitch=${String(pitch)}
-      data-note=${noteName}
-      title=${noteName}
-      role="button"
-      aria-label=${`Play ${noteName}`}
-    ></div>
-  `;
-}
-
-function getPianoKeyClassName(pitch: number, tunePitches: Set<number>): string {
+  activePitches: Set<number>,
+  auditionPitches: Set<number>,
+): string {
   const classNames = [
     "chatmusic-piano-key",
     isBlackPianoKey(pitch)
@@ -264,8 +316,16 @@ function getPianoKeyClassName(pitch: number, tunePitches: Set<number>): string {
 
   if (tunePitches.has(pitch)) classNames.push("chatmusic-key-in-tune");
   if (pitch === MIDDLE_C_PITCH) classNames.push("chatmusic-key-middle-c");
+  if (activePitches.has(pitch)) classNames.push("chatmusic-key-active");
+  if (auditionPitches.has(pitch)) {
+    classNames.push("chatmusic-key-auditioning");
+  }
 
   return classNames.join(" ");
+}
+
+if (!customElements.get(KEYBOARD_TAG_NAME)) {
+  customElements.define(KEYBOARD_TAG_NAME, ChatMusicKeyboardElement);
 }
 
 function isBlackPianoKey(pitch: number): boolean {

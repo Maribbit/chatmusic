@@ -51,12 +51,8 @@ export interface RenderInstance {
   qualityPanelElement: HTMLElement;
   qualitySummaryElement: HTMLElement;
   qualityListElement: HTMLElement;
-  qualityCopyButton: HTMLButtonElement;
   tempoControl: TempoControl;
   durationControl: DurationControl;
-  exportButton: HTMLButtonElement;
-  midiExportButton: HTMLButtonElement;
-  studioButton: HTMLButtonElement;
   codeToggleButton: HTMLButtonElement;
   preElement: Element;
   preElementOriginalDisplay: string | null;
@@ -321,7 +317,31 @@ export function renderAbc(
     return updateRender(existing, abcText, themeMode);
   }
 
-  const elements = createRenderView(preElement, themeMode, shadowStyles);
+  let instance: RenderInstance | null = null;
+  const runtime = getExtensionRuntime();
+  const elements = createRenderView(preElement, themeMode, shadowStyles, {
+    onCopyQualityFeedback: () => {
+      if (instance) copyQualityFeedback(instance);
+    },
+    onExportScore: () => {
+      if (instance) exportScore(instance);
+    },
+    onExportMidi: () => {
+      if (instance) exportMidi(instance);
+    },
+    onOpenStudio: runtime?.sendMessage
+      ? () => {
+          if (instance) {
+            void runtime.sendMessage?.(
+              createOpenStudioMessage(instance.abcText),
+            );
+          }
+        }
+      : undefined,
+    onToggleCode: () => {
+      if (instance) setCodeCollapsed(instance, !instance.isCodeCollapsed);
+    },
+  });
   const keyboard = createKeyboardController(
     elements.keyboardElement,
     elements.keyboardToggleButton,
@@ -337,7 +357,6 @@ export function renderAbc(
   );
 
   // Render sheet music SVG
-  let instance: RenderInstance | null = null;
   const visualObj = abcjs.renderAbc(elements.scoreElement, abcText, {
     responsive: "resize",
     add_classes: true,
@@ -354,12 +373,8 @@ export function renderAbc(
     qualityPanelElement: elements.qualityPanelElement,
     qualitySummaryElement: elements.qualitySummaryElement,
     qualityListElement: elements.qualityListElement,
-    qualityCopyButton: elements.qualityCopyButton,
     tempoControl,
     durationControl,
-    exportButton: elements.exportButton,
-    midiExportButton: elements.midiExportButton,
-    studioButton: elements.studioButton,
     codeToggleButton: elements.codeToggleButton,
     preElement,
     preElementOriginalDisplay: null,
@@ -375,11 +390,6 @@ export function renderAbc(
     },
   };
 
-  setupCodeToggleButton(instance);
-  setupExportButton(instance);
-  setupMidiExportButton(instance);
-  setupQualityCopyButton(instance);
-  setupStudioButton(instance);
   updateQualityPanel(instance);
   applyCodeBlockVisibility(instance, codeBlockVisibility);
   applyKeyboardVisibility(instance, keyboardVisibility);
@@ -398,78 +408,31 @@ function playKeyboardPitch(pitch: number): void {
   });
 }
 
-function setupStudioButton(instance: RenderInstance): void {
-  const runtime = getExtensionRuntime();
+function exportScore(instance: RenderInstance): void {
+  const svg = getScoreSvg(instance.scoreElement);
+  if (!svg) return;
 
-  if (!runtime?.sendMessage) {
-    instance.studioButton.hidden = true;
-    return;
+  downloadSvg(svg, getSvgDownloadFilename(instance.abcText));
+}
+
+function exportMidi(instance: RenderInstance): void {
+  const tune = instance.visualObj?.[0];
+  if (!tune) return;
+
+  try {
+    downloadMidi(tune, getMidiDownloadFilename(instance.abcText));
+  } catch (error) {
+    console.warn("[ChatMusic] MIDI export failed:", error);
   }
-
-  const openStudio = () => {
-    void runtime.sendMessage?.(createOpenStudioMessage(instance.abcText));
-  };
-  const previousCleanup = instance.cleanup;
-
-  instance.studioButton.addEventListener("click", openStudio);
-  instance.cleanup = () => {
-    instance.studioButton.removeEventListener("click", openStudio);
-    previousCleanup();
-  };
 }
 
-function setupExportButton(instance: RenderInstance): void {
-  const exportScore = () => {
-    const svg = getScoreSvg(instance.scoreElement);
-    if (!svg) return;
+function copyQualityFeedback(instance: RenderInstance): void {
+  const report = validateAbcSource(instance.abcText);
+  const feedback = formatAbcQualityReportForAi(report);
 
-    downloadSvg(svg, getSvgDownloadFilename(instance.abcText));
-  };
-  const previousCleanup = instance.cleanup;
-
-  instance.exportButton.addEventListener("click", exportScore);
-  instance.cleanup = () => {
-    instance.exportButton.removeEventListener("click", exportScore);
-    previousCleanup();
-  };
-}
-
-function setupMidiExportButton(instance: RenderInstance): void {
-  const exportMidi = () => {
-    const tune = instance.visualObj?.[0];
-    if (!tune) return;
-
-    try {
-      downloadMidi(tune, getMidiDownloadFilename(instance.abcText));
-    } catch (error) {
-      console.warn("[ChatMusic] MIDI export failed:", error);
-    }
-  };
-  const previousCleanup = instance.cleanup;
-
-  instance.midiExportButton.addEventListener("click", exportMidi);
-  instance.cleanup = () => {
-    instance.midiExportButton.removeEventListener("click", exportMidi);
-    previousCleanup();
-  };
-}
-
-function setupQualityCopyButton(instance: RenderInstance): void {
-  const copyFeedback = () => {
-    const report = validateAbcSource(instance.abcText);
-    const feedback = formatAbcQualityReportForAi(report);
-
-    navigator.clipboard.writeText(feedback).catch((error: unknown) => {
-      console.warn("[ChatMusic] Copy ABC feedback failed:", error);
-    });
-  };
-  const previousCleanup = instance.cleanup;
-
-  instance.qualityCopyButton.addEventListener("click", copyFeedback);
-  instance.cleanup = () => {
-    instance.qualityCopyButton.removeEventListener("click", copyFeedback);
-    previousCleanup();
-  };
+  navigator.clipboard.writeText(feedback).catch((error: unknown) => {
+    console.warn("[ChatMusic] Copy ABC feedback failed:", error);
+  });
 }
 
 function updateQualityPanel(instance: RenderInstance): void {
@@ -484,19 +447,6 @@ function updateQualityPanel(instance: RenderInstance): void {
   instance.qualityPanelElement.hidden = false;
   instance.qualitySummaryElement.textContent = `${report.diagnostics.length} ABC parser issue${report.diagnostics.length === 1 ? "" : "s"} found.`;
   renderQualityDiagnostics(instance.qualityListElement, report.diagnostics);
-}
-
-function setupCodeToggleButton(instance: RenderInstance): void {
-  const toggleCode = () => {
-    setCodeCollapsed(instance, !instance.isCodeCollapsed);
-  };
-  const previousCleanup = instance.cleanup;
-
-  instance.codeToggleButton.addEventListener("click", toggleCode);
-  instance.cleanup = () => {
-    instance.codeToggleButton.removeEventListener("click", toggleCode);
-    previousCleanup();
-  };
 }
 
 function applyKeyboardVisibility(
