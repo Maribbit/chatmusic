@@ -32,6 +32,8 @@
   --chatmusic-warning-bg: #fff8e6;
   --chatmusic-warning-border: #f3cf74;
   --chatmusic-error-text: #999;
+  --chatmusic-panel-bg: #f9fafb;
+  --chatmusic-panel-border: #d7dde5;
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
 }
 
@@ -75,6 +77,8 @@
   --chatmusic-warning-bg: #3a2f17;
   --chatmusic-warning-border: #8b6f2c;
   --chatmusic-error-text: #a5abb3;
+  --chatmusic-panel-bg: #202329;
+  --chatmusic-panel-border: #34373d;
 }
 
 :host,
@@ -110,7 +114,28 @@
   width: 100%;
   height: 100%;
   border-radius: 0;
+  padding: 0;
+}
+
+:host([data-chatmusic-layout="studio"]) .chatmusic-header {
+  min-height: 36px;
+  margin: 0;
+  padding: 0 10px;
+  border-bottom: 1px solid var(--chatmusic-panel-border);
+  background: var(--chatmusic-panel-bg);
+}
+
+:host([data-chatmusic-layout="studio"]) .chatmusic-score {
   padding: 12px;
+}
+
+:host([data-chatmusic-layout="studio"]) .chatmusic-audio {
+  padding: 12px;
+  margin: 0;
+}
+
+:host([data-chatmusic-layout="studio"]) .chatmusic-keyboard {
+  border-top: 1px solid var(--chatmusic-audio-border);
 }
 
 .chatmusic-header {

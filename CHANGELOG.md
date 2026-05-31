@@ -13,6 +13,11 @@ This project follows a lightweight [Keep a Changelog](https://keepachangelog.com
 - Studio playback now highlights the corresponding ABC source range while notes play.
 - Studio now links to external MusicXML/ABC conversion tools instead of running an incomplete built-in MusicXML converter.
 
+### Changed
+
+- Restructured Studio Editor into a VS Code-style tier layout with a slim status and diagnostic footer instead of interleaving error panels in the content flow.
+- Refined Studio UI spacing with a compact main header and editor toolbar spacing.
+
 ### Removed
 
 - Built-in MusicXML/MXL import was removed so ChatMusic can stay focused on reliable ABC editing, validation, rendering, playback, and export workflows.
