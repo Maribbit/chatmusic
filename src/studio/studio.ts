@@ -193,6 +193,33 @@ async function initializeStudio(): Promise<void> {
       renderCurrentInput();
     }
   });
+
+  const infoButton = document.getElementById("infoButton") as HTMLButtonElement;
+  const infoDialog = document.getElementById("infoDialog") as HTMLDialogElement;
+  const closeInfoButton = document.getElementById(
+    "closeInfoButton",
+  ) as HTMLButtonElement;
+
+  infoButton.addEventListener("click", () => {
+    infoDialog.showModal();
+  });
+
+  closeInfoButton.addEventListener("click", () => {
+    infoDialog.close();
+  });
+
+  infoDialog.addEventListener("click", (event) => {
+    const dialogDimensions = infoDialog.getBoundingClientRect();
+    if (
+      event.clientX < dialogDimensions.left ||
+      event.clientX > dialogDimensions.right ||
+      event.clientY < dialogDimensions.top ||
+      event.clientY > dialogDimensions.bottom
+    ) {
+      infoDialog.close();
+    }
+  });
+
   stackedLayoutQuery.addEventListener("change", () => {
     if (explicitLayoutMode === "auto") {
       updateResizerOrientation();
