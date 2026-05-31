@@ -1,5 +1,6 @@
 import { html, render, svg, type TemplateResult } from "lit";
 import type { ThemeMode } from "../shared/settings";
+import { CODE_TOGGLE_EVENT } from "./code-toggle";
 import { QUALITY_COPY_EVENT } from "./quality-panel";
 import { resolveTheme } from "./theme";
 
@@ -11,7 +12,7 @@ export interface RenderViewElements {
   audioElement: HTMLElement;
   qualityElement: HTMLElement;
   tempoElement: HTMLElement;
-  codeToggleButton: HTMLButtonElement;
+  codeToggleElement: HTMLElement;
   cleanup: () => void;
 }
 
@@ -66,9 +67,9 @@ export function createRenderView(
     audioElement: container.querySelector(".chatmusic-audio") as HTMLElement,
     qualityElement: container.querySelector("chatmusic-quality") as HTMLElement,
     tempoElement: container.querySelector("chatmusic-tempo") as HTMLElement,
-    codeToggleButton: container.querySelector(
-      ".chatmusic-code-toggle-button",
-    ) as HTMLButtonElement,
+    codeToggleElement: container.querySelector(
+      "chatmusic-code-toggle",
+    ) as HTMLElement,
     cleanup,
   };
 }
@@ -133,15 +134,7 @@ function renderContainerTemplate(): TemplateResult {
         >
           ${renderKeyboardIcon()}
         </button>
-        <button
-          class="chatmusic-code-toggle-button"
-          type="button"
-          title="Hide source code"
-          aria-label="Hide source code"
-          aria-pressed="true"
-        >
-          ${renderCodeIcon()}
-        </button>
+        <chatmusic-code-toggle></chatmusic-code-toggle>
       </div>
     </div>
     <chatmusic-quality
@@ -216,14 +209,6 @@ function renderKeyboardIcon(): TemplateResult {
   `);
 }
 
-function renderCodeIcon(): TemplateResult {
-  return renderIcon(svg`
-    <path d="m18 16 4-4-4-4" />
-    <path d="m6 8-4 4 4 4" />
-    <path d="m14.5 4-5 16" />
-  `);
-}
-
 function setupRenderViewActions(
   container: HTMLElement,
   handlers: RenderViewHandlers,
@@ -247,8 +232,9 @@ function setupRenderViewActions(
       handlers.onOpenStudio,
       true,
     ),
-    setupButtonAction(
-      container.querySelector(".chatmusic-code-toggle-button"),
+    setupElementAction(
+      container.querySelector("chatmusic-code-toggle"),
+      CODE_TOGGLE_EVENT,
       handlers.onToggleCode,
     ),
   ];

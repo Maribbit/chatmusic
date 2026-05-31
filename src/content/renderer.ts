@@ -5,6 +5,7 @@
 import abcjs from "abcjs";
 import abcjsAudioStyles from "abcjs/abcjs-audio.css?inline";
 import chatmusicStyles from "./styles.css?inline";
+import type { ChatMusicCodeToggleElement } from "./code-toggle";
 import {
   DEFAULT_CODE_BLOCK_VISIBILITY,
   DEFAULT_KEYBOARD_VISIBILITY,
@@ -47,7 +48,7 @@ export interface RenderInstance {
   qualityElement: ChatMusicQualityElement;
   tempoControl: TempoControl;
   durationControl: DurationControl;
-  codeToggleButton: HTMLButtonElement;
+  codeToggleElement: ChatMusicCodeToggleElement;
   preElement: Element;
   preElementOriginalDisplay: string | null;
   isCodeCollapsed: boolean;
@@ -365,7 +366,7 @@ export function renderAbc(
     qualityElement: elements.qualityElement as ChatMusicQualityElement,
     tempoControl,
     durationControl,
-    codeToggleButton: elements.codeToggleButton,
+    codeToggleElement: elements.codeToggleElement as ChatMusicCodeToggleElement,
     preElement,
     preElementOriginalDisplay: null,
     isCodeCollapsed: false,
@@ -468,20 +469,7 @@ function setCodeCollapsed(
   instance.preElement.style.display = isCollapsed
     ? "none"
     : instance.preElementOriginalDisplay;
-  updateCodeToggleButton(instance);
-}
-
-function updateCodeToggleButton(instance: RenderInstance): void {
-  const label = instance.isCodeCollapsed
-    ? "Show source code"
-    : "Hide source code";
-
-  instance.codeToggleButton.title = label;
-  instance.codeToggleButton.setAttribute("aria-label", label);
-  instance.codeToggleButton.setAttribute(
-    "aria-pressed",
-    String(!instance.isCodeCollapsed),
-  );
+  instance.codeToggleElement.setCollapsed(isCollapsed);
 }
 
 export function updateCodeBlockVisibility(

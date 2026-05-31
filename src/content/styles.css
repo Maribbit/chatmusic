@@ -149,6 +149,11 @@ chatmusic-tempo[hidden] {
   display: none;
 }
 
+chatmusic-code-toggle {
+  display: inline-flex;
+  align-items: center;
+}
+
 .chatmusic-tempo-menu {
   position: relative;
   display: flex;
