@@ -1,4 +1,5 @@
-:host(:fullscreen) .chatmusic-container {
+:host(:fullscreen) .chatmusic-container,
+:host([data-chatmusic-browser-fullscreen]) .chatmusic-container {
   display: flex;
   flex-direction: column;
   width: 100%;
@@ -41,7 +42,8 @@
   display: none;
 }
 
-:host(:fullscreen) .chatmusic-score {
+:host(:fullscreen) .chatmusic-score,
+:host([data-chatmusic-browser-fullscreen]) .chatmusic-score {
   flex: 1 1 auto !important;
   max-height: none !important;
   min-height: 0 !important;
@@ -65,7 +67,10 @@
 
 :host(:fullscreen) .chatmusic-header,
 :host(:fullscreen) .chatmusic-keyboard,
-:host(:fullscreen) .chatmusic-audio {
+:host(:fullscreen) .chatmusic-audio,
+:host([data-chatmusic-browser-fullscreen]) .chatmusic-header,
+:host([data-chatmusic-browser-fullscreen]) .chatmusic-keyboard,
+:host([data-chatmusic-browser-fullscreen]) .chatmusic-audio {
   flex: 0 0 auto;
 }
 
@@ -80,7 +85,8 @@
   display: none;
 }
 
-:host(:fullscreen) .chatmusic-keyboard {
+:host(:fullscreen) .chatmusic-keyboard,
+:host([data-chatmusic-browser-fullscreen]) .chatmusic-keyboard {
   min-height: calc(var(--chatmusic-white-key-height) + 12px);
   margin-top: auto;
 }
@@ -89,7 +95,8 @@
   margin-top: auto;
 }
 
-:host(:fullscreen) .chatmusic-score svg {
+:host(:fullscreen) .chatmusic-score svg,
+:host([data-chatmusic-browser-fullscreen]) .chatmusic-score svg {
   width: 100% !important;
   max-width: none !important;
   height: auto !important;

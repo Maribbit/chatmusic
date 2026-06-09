@@ -6,7 +6,15 @@ This project follows a lightweight [Keep a Changelog](https://keepachangelog.com
 
 ## [Unreleased]
 
+### Added
+
+- Added browser fullscreen toggle as a complement to system fullscreen, expanding the player to fill the browser viewport without hiding browser chrome.
+- Added Escape key support to exit browser fullscreen mode.
+
 ### Changed
+
+- Redesigned the extension icon with a Frutiger Aero glossy style, a rich blue-cyan gradient, and mirrored quarter notes for visual symmetry.
+- Added an icon generation script (`scripts/generate-icons.mjs`) to produce PNG icons from the SVG source.
 
 - Moved reusable score rendering, playback, and player controls from `src/content` into a dedicated `src/player` domain.
 - Grouped player internals into `components`, `playback`, `view`, and `exports` subfolders with local boundary notes.

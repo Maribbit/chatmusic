@@ -1,4 +1,60 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128">
-  <path d="M30 8 C17.8 8 8 17.8 8 30 L8 78 C8 90.2 17.8 100 30 100 L32 100 L32 120 L56 100 L98 100 C110.2 100 120 90.2 120 78 L120 30 C120 17.8 110.2 8 98 8 Z" fill="#0288D1"/>
-  <path d="M88,30 L56,30 C53.8,30 52,31.8 52,34 L52,60.8 C50.5,59.6 48.4,58.8 46,58.8 C40.5,58.8 36,63.3 36,68.8 C36,74.3 40.5,78.8 46,78.8 C51.5,78.8 56,74.3 56,68.8 L56,42 L84,42 L84,60.8 C82.5,59.6 80.4,58.8 78,58.8 C72.5,58.8 68,63.3 68,68.8 C68,74.3 72.5,78.8 78,78.8 C83.5,78.8 88,74.3 88,68.8 L88,34 C88,31.8 86.2,30 84,30 L88,30 Z" fill="#FFFFFF"/>
+  <defs>
+    <!-- 5-stop base gradient: airy cyan → deep indigo -->
+    <linearGradient id="base" x1="0.15" y1="0.05" x2="0.85" y2="0.97">
+      <stop offset="0%"   stop-color="#5CD6FF"/>
+      <stop offset="18%"  stop-color="#32BDF6"/>
+      <stop offset="45%"  stop-color="#0D9DE0"/>
+      <stop offset="72%"  stop-color="#0369B0"/>
+      <stop offset="100%" stop-color="#014477"/>
+    </linearGradient>
+
+    <!-- Bottom depth — subtle darkening for 3D volume -->
+    <linearGradient id="depth" x1="0" y1="0.50" x2="0" y2="1">
+      <stop offset="0%"   stop-color="rgba(0,0,0,0)"/>
+      <stop offset="35%"  stop-color="rgba(0,0,0,0.03)"/>
+      <stop offset="100%" stop-color="rgba(0,0,0,0.15)"/>
+    </linearGradient>
+
+    <!-- Diagonal rim light -->
+    <linearGradient id="rim" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%"   stop-color="rgba(255,255,255,0.65)"/>
+      <stop offset="25%"  stop-color="rgba(255,255,255,0.18)"/>
+      <stop offset="55%"  stop-color="rgba(255,255,255,0.04)"/>
+      <stop offset="100%" stop-color="rgba(255,255,255,0)"/>
+    </linearGradient>
+
+    <!-- Outer shadow — soft, diffuse -->
+    <filter id="shadow" x="-25%" y="-20%" width="155%" height="145%">
+      <feDropShadow dx="0" dy="3" stdDeviation="7" flood-color="rgba(0,0,45,0.28)"/>
+    </filter>
+
+    <!-- Note emboss — subtle shadow so it reads as embedded in the surface -->
+    <filter id="noteEmboss" x="-35%" y="-25%" width="170%" height="155%">
+      <feDropShadow dx="0" dy="1.5" stdDeviation="2.8" flood-color="rgba(0,0,55,0.20)"/>
+    </filter>
+  </defs>
+
+  <!-- ===== Background layers ===== -->
+
+  <rect x="8" y="8" width="112" height="112" rx="32" fill="rgba(0,0,0,0)" filter="url(#shadow)"/>
+
+  <rect x="8" y="8" width="112" height="112" rx="32" fill="url(#base)"/>
+
+  <!-- Bottom volume shadow -->
+  <rect x="8" y="8" width="112" height="112" rx="32" fill="url(#depth)"/>
+
+  <!-- Rim bevel -->
+  <rect x="9.5" y="9.5" width="109" height="109" rx="30.5" fill="none" stroke="url(#rim)" stroke-width="1.8"/>
+
+  <!-- ===== Quarter note (visually centered) ===== -->
+
+  <g filter="url(#noteEmboss)">
+    <!-- Note head: filled oval, classic -16° tilt -->
+    <ellipse cx="62" cy="82" rx="13" ry="9.5" transform="rotate(-16 62 82)"
+             fill="#FFFFFF" opacity="0.94"/>
+
+    <!-- Stem: meets the right edge of the head -->
+    <rect x="70" y="27" width="4.5" height="57" rx="2.25" fill="#FFFFFF" opacity="0.91"/>
+  </g>
 </svg>

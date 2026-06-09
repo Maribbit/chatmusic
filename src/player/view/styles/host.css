@@ -44,6 +44,17 @@
   background: var(--chatmusic-container-bg);
 }
 
+/* Browser-level fullscreen (CSS-based, keeps browser chrome visible) */
+:host([data-chatmusic-browser-fullscreen]) {
+  position: fixed;
+  inset: 0;
+  z-index: 999999;
+  width: 100vw;
+  height: 100vh;
+  margin: 0;
+  background: var(--chatmusic-container-bg);
+}
+
 :host([data-chatmusic-layout="studio"]) {
   display: block;
   height: 100%;

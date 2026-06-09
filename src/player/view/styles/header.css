@@ -48,6 +48,15 @@ chatmusic-fullscreen-toggle[hidden] {
   display: none;
 }
 
+chatmusic-browser-fullscreen-toggle {
+  display: inline-flex;
+  align-items: center;
+}
+
+chatmusic-browser-fullscreen-toggle[hidden] {
+  display: none;
+}
+
 chatmusic-keyboard-toggle {
   display: inline-flex;
   align-items: center;
@@ -69,7 +78,8 @@ chatmusic-keyboard-toggle {
 .chatmusic-midi-export-button,
 .chatmusic-studio-button,
 .chatmusic-code-toggle-button,
-.chatmusic-fullscreen-button {
+.chatmusic-fullscreen-button,
+.chatmusic-browser-fullscreen-button {
   all: unset;
   box-sizing: border-box;
   display: inline-flex;

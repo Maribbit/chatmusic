@@ -1,6 +1,8 @@
 import { html, render, svg, type TemplateResult } from "lit";
 import type { ThemeMode } from "../../shared/settings";
 import { CODE_TOGGLE_EVENT } from "../components/code-toggle";
+import type { ChatMusicBrowserFullscreenToggleElement } from "../components/browser-fullscreen-toggle";
+import "../components/browser-fullscreen-toggle";
 import type { ChatMusicFullscreenToggleElement } from "../components/fullscreen-toggle";
 import "../components/fullscreen-toggle";
 import "../components/keyboard-toggle";
@@ -16,6 +18,7 @@ export interface RenderViewElements {
   qualityElement: HTMLElement;
   tempoElement: HTMLElement;
   codeToggleElement: HTMLElement;
+  browserFullscreenToggleElement: HTMLElement;
   cleanup: () => void;
 }
 
@@ -49,6 +52,12 @@ export function createRenderView(
     "chatmusic-fullscreen-toggle",
   ) as ChatMusicFullscreenToggleElement;
   fullscreenToggle.setFullscreenTarget(host);
+
+  const browserFullscreenToggle = container.querySelector(
+    "chatmusic-browser-fullscreen-toggle",
+  ) as ChatMusicBrowserFullscreenToggleElement;
+  browserFullscreenToggle.setHostElement(host);
+
   const cleanupActions = setupRenderViewActions(container, handlers);
   const cleanup = () => cleanupActions();
 
@@ -70,6 +79,7 @@ export function createRenderView(
     codeToggleElement: container.querySelector(
       "chatmusic-code-toggle",
     ) as HTMLElement,
+    browserFullscreenToggleElement: browserFullscreenToggle,
     cleanup,
   };
 }
@@ -117,6 +127,7 @@ function renderContainerTemplate(): TemplateResult {
           ${renderExternalLinkIcon()}
         </button>
         <chatmusic-fullscreen-toggle></chatmusic-fullscreen-toggle>
+        <chatmusic-browser-fullscreen-toggle></chatmusic-browser-fullscreen-toggle>
         <chatmusic-keyboard-toggle></chatmusic-keyboard-toggle>
         <chatmusic-code-toggle></chatmusic-code-toggle>
       </div>
