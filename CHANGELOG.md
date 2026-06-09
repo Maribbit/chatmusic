@@ -20,6 +20,10 @@ This project follows a lightweight [Keep a Changelog](https://keepachangelog.com
 - Refined Studio responsive layout: added a compact header breakpoint at 1000px (tighter gap/padding) and hid the Layout Mode control at 860px, where stacked layout is forced in auto mode.
 - Unified icon sizes across Studio About dialog (18×18 → 15×15) and fixed the tempo icon to use an unfilled circle stroke, matching the project-wide Lucide/Feather icon language.
 
+### Fixed
+
+- Fixed note-click source highlight that skipped the last note before a bar line. When seeking to a clicked note's timing position, abcjs could fire the next event instead of the clicked one. The highlight is now fired directly after seeking so the correct note is always highlighted.
+
 ## [0.4.0] - 2026-05-31
 
 ### Added

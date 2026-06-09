@@ -9,6 +9,26 @@ export function getSeekPercentForElement(
   instance: RenderInstance,
   abcElement: AbcElementRef,
 ): number | null {
+  const { percent } = getSeekInfoForElement(instance, abcElement) ?? {};
+  return percent ?? null;
+}
+
+/**
+ * Find the timing event matching a clicked abc element and return both
+ * the event and the seek percent. Returns null if no match is found.
+ */
+export function findMatchingTimingEvent(
+  instance: RenderInstance,
+  abcElement: AbcElementRef,
+): TimingEvent | null {
+  const { event } = getSeekInfoForElement(instance, abcElement) ?? {};
+  return event ?? null;
+}
+
+function getSeekInfoForElement(
+  instance: RenderInstance,
+  abcElement: AbcElementRef,
+): { event: TimingEvent; percent: number } | null {
   if (abcElement.startChar === undefined || abcElement.endChar === undefined) {
     return null;
   }
@@ -22,7 +42,10 @@ export function getSeekPercentForElement(
   );
   if (!matchingEvent) return null;
 
-  return matchingEvent.milliseconds / lastEvent.milliseconds;
+  return {
+    event: matchingEvent,
+    percent: matchingEvent.milliseconds / lastEvent.milliseconds,
+  };
 }
 
 export function getTimingEvents(instance: RenderInstance): TimingEvent[] {

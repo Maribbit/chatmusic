@@ -28,9 +28,16 @@ import { exportMidi, exportScore } from "./exports/actions";
 import { playLocalPianoPitch } from "./playback/soundfont";
 import { createTempoControl } from "./components/tempo-control";
 import { seekPlaybackToPercent } from "./playback/progress";
-import { clearPlaybackHighlight, setupKeyboard } from "./playback/highlight";
+import {
+  clearPlaybackHighlight,
+  highlightTimingEvent,
+  setupKeyboard,
+} from "./playback/highlight";
 import { initSynth } from "./playback/synth";
-import { getSeekPercentForElement } from "./playback/timing";
+import {
+  findMatchingTimingEvent,
+  getSeekPercentForElement,
+} from "./playback/timing";
 import { copyQualityFeedback, updateQualityPanel } from "./quality";
 export { getSourceHighlightRangesForTest } from "./playback/source-highlight";
 export type {
@@ -68,8 +75,12 @@ async function seekToAbcElement(
   instance: RenderInstance,
   abcElement: AbcElementRef,
 ): Promise<void> {
-  const percent = getSeekPercentForElement(instance, abcElement);
-  if (percent === null || !instance.synthControl) return;
+  const matchingEvent = findMatchingTimingEvent(instance, abcElement);
+  const percent = matchingEvent
+    ? getSeekPercentForElement(instance, abcElement)
+    : null;
+  if (percent === null || matchingEvent === null || !instance.synthControl)
+    return;
 
   const synthControl = instance.synthControl as SeekableSynthControl;
   const seek = () => {
@@ -82,6 +93,10 @@ async function seekToAbcElement(
   } else {
     seek();
   }
+
+  // Directly fire the highlight — abcjs may skip the event when seeking
+  // lands exactly on its time boundary (e.g. last note before a bar line).
+  highlightTimingEvent(instance, matchingEvent);
 }
 
 /**
