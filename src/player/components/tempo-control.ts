@@ -206,7 +206,7 @@ function renderTempoIcon(): TemplateResult {
       <path d="M5 21h14" />
       <path d="M9 13v-1 M15 13v-1" />
       <path d="M12 21V8" />
-      <circle cx="12" cy="13.5" r="1.5" fill="currentColor" stroke="none" />
+      <circle cx="12" cy="13.5" r="1.5" fill="none" stroke="currentColor" />
     </svg>
   `;
 }

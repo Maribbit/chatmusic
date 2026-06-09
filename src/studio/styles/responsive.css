@@ -20,8 +20,17 @@
     padding: 6px 10px;
   }
 
+  .studio-header {
+    gap: 8px;
+  }
+
   .studio-actions {
     justify-content: flex-end;
+  }
+
+  /* Layout mode has no useful meaning in stacked layout — hide it */
+  #layoutModeForm {
+    display: none;
   }
 
   .secondary-button {
@@ -48,6 +57,14 @@
   .studio-shell:not(.layout-split) .preview-pane {
     grid-column: 1;
     grid-row: 4;
+  }
+}
+
+/* Compact header: slightly tighter spacing below 1000px (tablet / small desktop) */
+@media (max-width: 1000px) {
+  .studio-header {
+    gap: 8px;
+    padding: 6px 10px;
   }
 }
 
